@@ -1,5 +1,6 @@
-import { Controller, Get } from '@nestjs/common';
+import { Controller, Get, Post, Body} from '@nestjs/common';
 import { TutorsService } from './tutors.service';
+import { CreateTutorDto } from './dto/create-tutor.dto';
 
 @Controller('tutors')
 export class TutorsController {
@@ -9,4 +10,12 @@ export class TutorsController {
   public getTutors() {
     return this.tutorsService.getTutors();
   }
+
+
+  @Post()
+  public createTutors (@Body() createTutorDto : CreateTutorDto){
+    return createTutorDto
+    
+  }
+
 }
