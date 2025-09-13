@@ -3,7 +3,7 @@ import { UsersModule } from './users/users.module';
 import { TutorsModule } from './tutors/tutors.module';
 
 @Module({
-  imports: [UsersModule,TutorsModule],
+  imports: [UsersModule, TutorsModule],
   controllers: [],
   providers: [],
 })
