@@ -1,21 +1,23 @@
 import { Injectable } from '@nestjs/common';
-
-type User = {
-  name: string;
-  age: number;
-};
+import { InjectModel } from '@nestjs/mongoose';
+import { User } from './entities/user.entity';
+import { Model } from 'mongoose';
 
 @Injectable()
 export class UsersService {
-  private users: User[] = [
-    {
-      name: 'Cristian',
-      age: 21,
-    },
-  ];
+  public constructor(@InjectModel(User.name) private userModel: Model<User>) {}
 
   public getUsers() {
-    return this.users;
+    return this.userModel.find().exec();
+  }
+
+  public findByEmail(email: string) {
+    return this.userModel
+      .findOne({
+        email: email,
+      })
+      .populate('student')
+      .exec();
   }
 
   public createUser() {}
