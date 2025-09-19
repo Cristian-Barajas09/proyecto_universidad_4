@@ -7,11 +7,12 @@ import {
   Param,
   ParseIntPipe,
   Delete,
-  Patch,
 } from '@nestjs/common';
 import { UsersService } from './users.service';
 import { CreateUserDTO } from './dto/create-user.dto';
-import { UpdateUserDTO } from './dto/update-user.dto';
+import { ParseMongoIdPipe } from 'src/common/pipes/parse-mongo-id.pipe';
+import { Auth } from 'src/auth/decorators/auth.decorator';
+import { ValidRoles } from 'src/auth/interfaces/valid-roles.interface';
 
 @Controller('users')
 export class UsersController {
@@ -41,17 +42,8 @@ export class UsersController {
   }
 
   @Delete(':userId')
-  public deleteUser(@Param('userId', ParseIntPipe) userId: number) {
-    return {
-      userId,
-    };
-  }
-
-  @Patch(':userId')
-  public updateUser(
-    @Param('userId', ParseIntPipe) userId: number,
-    @Body() updateDTO: UpdateUserDTO,
-  ) {
-    return updateDTO;
+  @Auth(ValidRoles.ADMIN)
+  public deleteUser(@Param('userId', ParseMongoIdPipe) userId: string) {
+    return this.usersService.deleteById(userId);
   }
 }
