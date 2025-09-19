@@ -33,7 +33,7 @@ export class StudentsService {
       university: registerStudentDto.university,
     });
 
-    const user = new this.userModel({
+    const user = await this.userModel.create({
       fullName: registerStudentDto.fullName,
       email: registerStudentDto.email,
       password: await this.encryptPassword.encrypt(registerStudentDto.password),
