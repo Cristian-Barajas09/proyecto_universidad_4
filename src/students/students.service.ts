@@ -29,7 +29,6 @@ export class StudentsService {
       throw new BadRequestException('Email already in use');
     }
 
-    // 1. Crear el estudiante sin usuario
     const student = await this.studentModel.create({
       university: registerStudentDto.university,
     });
@@ -57,5 +56,9 @@ export class StudentsService {
 
   public async getAllStudents() {
     return this.userModel.find().populate('student').exec();
+  }
+
+  public async getStudentById(id: string) {
+    return this.userModel.findById(id).populate('student').exec();
   }
 }
