@@ -11,7 +11,7 @@ export class StudentsController {
     return this.studentsService.register(registerStudentDto);
   }
 
-  @Get()kw
+  @Get()
   public async getAllStudents() {
     return this.studentsService.getAllStudents();
   }

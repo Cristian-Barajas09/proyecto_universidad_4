@@ -1,0 +1,13 @@
+{
+	"folders": [
+		{
+			"path": "."
+		},
+		{
+			"path": "../../react/tutor-virtual-app-movil"
+		}
+	],
+	"settings": {
+		"material-icon-theme.activeIconPack": "nest"
+	}
+}
