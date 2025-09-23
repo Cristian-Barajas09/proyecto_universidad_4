@@ -11,12 +11,13 @@ export class UsersService {
     return this.userModel.find().exec();
   }
 
-  public findByEmail(email: string) {
+  public findByEmail(email: string, fields: string[]) {
     return this.userModel
       .findOne({
         email: email,
       })
       .populate('student')
+      .select(fields)
       .exec();
   }
 

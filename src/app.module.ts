@@ -9,6 +9,9 @@ import { AuthModule } from './auth/auth.module';
 
 import { appConfig } from './config/app.config';
 import { validationSchema } from './config/joi.config';
+import { SchedulesModule } from './schedules/schedules.module';
+import { ChatsModule } from './chats/chats.module';
+import { CallsModule } from './calls/calls.module';
 
 @Module({
   imports: [
@@ -28,6 +31,9 @@ import { validationSchema } from './config/joi.config';
     TutorsModule,
     StudentsModule,
     AuthModule,
+    SchedulesModule,
+    ChatsModule,
+    CallsModule,
   ],
   controllers: [],
   providers: [],

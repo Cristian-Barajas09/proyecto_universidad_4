@@ -7,7 +7,7 @@ export class RegisterStudentDto {
 
   @IsString()
   @MinLength(3)
-  @IsEmail()
+  @IsEmail() // todo: use regular expression
   email: string;
 
   @IsString()

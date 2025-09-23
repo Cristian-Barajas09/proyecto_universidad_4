@@ -17,7 +17,10 @@ export class AuthService {
   ) {}
 
   async login(loginDto: LoginDTO) {
-    const user = await this.usersService.findByEmail(loginDto.email);
+    const user = await this.usersService.findByEmail(loginDto.email, [
+      '+password',
+      '-__v',
+    ]);
     if (!user) {
       throw new UnauthorizedException();
     }
@@ -31,8 +34,10 @@ export class AuthService {
       throw new UnauthorizedException();
     }
 
+    const { password, ...userWithoutPassword } = user.toJSON();
+
     return {
-      ...user.toJSON(),
+      ...userWithoutPassword,
       token: this.jwtService.sign({ email: user.email }),
     };
   }
