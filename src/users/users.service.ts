@@ -16,7 +16,6 @@ export class UsersService {
       .findOne({
         email: email,
       })
-      .populate('student')
       .select(fields)
       .exec();
   }

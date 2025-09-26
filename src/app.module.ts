@@ -12,6 +12,7 @@ import { validationSchema } from './config/joi.config';
 import { SchedulesModule } from './schedules/schedules.module';
 import { ChatsModule } from './chats/chats.module';
 import { CallsModule } from './calls/calls.module';
+import { ScheduleModule } from '@nestjs/schedule';
 
 @Module({
   imports: [
@@ -27,6 +28,7 @@ import { CallsModule } from './calls/calls.module';
         uri: configService.get<string>('DATABASE_URI'),
       }),
     }),
+    ScheduleModule.forRoot(),
     UsersModule,
     TutorsModule,
     StudentsModule,

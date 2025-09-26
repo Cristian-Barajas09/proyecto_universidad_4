@@ -1,4 +1,4 @@
-import { Prop, Schema } from '@nestjs/mongoose';
+import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
 import mongoose, { Document, Types } from 'mongoose';
 
 @Schema()
@@ -12,3 +12,5 @@ export class Certification extends Document {
   @Prop({ type: mongoose.Schema.Types.ObjectId, ref: 'Tutor' })
   public tutor: Types.ObjectId;
 }
+
+export const CertificationSchema = SchemaFactory.createForClass(Certification);

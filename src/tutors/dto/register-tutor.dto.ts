@@ -1,18 +1,12 @@
-import { IsString, MaxLength, MinLength, IsArray } from 'class-validator';
+import { IsArray, IsMongoId } from 'class-validator';
 import { CertificationDto } from './certifications.dto';
+import { AbstractRegisterDTO } from 'src/auth/dto/abstract-register.dto';
 
-export class RegisterTutorDto {
-  @IsString()
-  @MaxLength(4)
-  public fullName: string;
-
-  @IsString()
-  public email: string;
-
-  @IsString()
-  @MinLength(8)
-  public password: string;
-
+export class RegisterTutorDto extends AbstractRegisterDTO {
   @IsArray()
   public certifications: CertificationDto[];
+
+  @IsArray()
+  @IsMongoId({ each: true })
+  public specialties: string[];
 }

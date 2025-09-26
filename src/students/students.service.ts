@@ -2,7 +2,7 @@ import { BadRequestException, Inject, Injectable } from '@nestjs/common';
 import { RegisterStudentDto } from './dto/register-student.dto';
 import { InjectModel } from '@nestjs/mongoose';
 
-import { Model, Types } from 'mongoose';
+import { Model } from 'mongoose';
 import { User } from 'src/users/entities/user.entity';
 import {
   ENCRYPT_ADAPTER_TOKEN,
@@ -29,36 +29,37 @@ export class StudentsService {
       throw new BadRequestException('Email already in use');
     }
 
-    const student = await this.studentModel.create({
-      university: registerStudentDto.university,
-    });
-
     const user = await this.userModel.create({
       fullName: registerStudentDto.fullName,
       email: registerStudentDto.email,
       password: await this.encryptPassword.encrypt(registerStudentDto.password),
       identityDocument: registerStudentDto.identityDocument,
       rol: ValidRoles.STUDENT,
-      student: student._id,
     });
-
     await user.save();
 
-    student.user = user._id as Types.ObjectId;
+    const student = await this.studentModel.create({
+      university: registerStudentDto.university,
+      user: user._id,
+    });
 
     await student.save();
 
     return {
-      ...user.toJSON(),
+      ...student.toJSON(),
       token: this.jwtService.sign({ email: user.email }),
     };
   }
 
   public async getAllStudents() {
-    return this.userModel.find().populate('student').exec();
+    return this.studentModel.find().populate('user').exec();
   }
 
   public async getStudentById(id: string) {
-    return this.userModel.findById(id).populate('student').exec();
+    return this.studentModel.findById(id).populate('user').exec();
+  }
+
+  public async findByUserId(userId: string) {
+    return this.studentModel.findOne({ user: userId }).populate('user').exec();
   }
 }

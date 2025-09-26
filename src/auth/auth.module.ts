@@ -6,12 +6,17 @@ import { UsersModule } from 'src/users/users.module';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { AuthController } from './auth.controller';
 import { AuthService } from './auth.service';
+import { JwtStrategy } from './strategies/jwt.strategy';
+import { TutorsModule } from 'src/tutors/tutors.module';
+import { StudentsModule } from 'src/students/students.module';
 
 @Module({
   imports: [
     ConfigModule,
     forwardRef(() => UsersModule),
     CommonModule,
+    forwardRef(() => TutorsModule),
+    forwardRef(() => StudentsModule),
     PassportModule.register({
       defaultStrategy: 'jwt',
     }),
@@ -27,7 +32,7 @@ import { AuthService } from './auth.service';
     }),
   ],
   controllers: [AuthController],
-  providers: [AuthService],
+  providers: [AuthService, JwtStrategy],
   exports: [PassportModule, JwtModule],
 })
 export class AuthModule {}
