@@ -9,6 +9,9 @@ export class Tutor extends Document {
   @Prop()
   public biografy: string;
 
+  @Prop()
+  public verified: boolean;
+
   @Prop({ type: mongoose.Schema.Types.ObjectId, ref: 'User' })
   public user: Types.ObjectId;
 

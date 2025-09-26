@@ -1,26 +1,147 @@
-import { Injectable } from '@nestjs/common';
+import {
+  BadRequestException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 import { CreateScheduleDto } from './dto/create-schedule.dto';
-import { UpdateScheduleDto } from './dto/update-schedule.dto';
+import { Model } from 'mongoose';
+import { InjectModel } from '@nestjs/mongoose';
+import dayjs, { Dayjs } from 'dayjs';
+import utc from 'dayjs/plugin/utc';
+import timezone from 'dayjs/plugin/timezone';
+import { Schedule } from './entities/schedule.entity';
+import { TutorsService } from 'src/tutors/services/tutors.service';
+import { StudentsService } from 'src/students/students.service';
+import { User } from 'src/users/entities/user.entity';
+import { AuthenticatedUser } from 'src/auth/interfaces/authenticated-user.interface';
+import { ValidRoles } from 'src/auth/interfaces/valid-roles.interface';
+import { Tutor } from 'src/tutors/entity/tutor.entity';
+import { Student } from 'src/students/entities/student.entity';
+
+dayjs.locale('es');
+dayjs.extend(utc);
+dayjs.extend(timezone);
 
 @Injectable()
 export class SchedulesService {
-  create(createScheduleDto: CreateScheduleDto) {
-    return 'This action adds a new schedule';
+  public constructor(
+    @InjectModel(Schedule.name)
+    private readonly scheduleModel: Model<Schedule>,
+    private readonly tutorsService: TutorsService,
+    private readonly studentsService: StudentsService,
+  ) {}
+
+  public async create(createScheduleDTO: CreateScheduleDto) {
+    const duration = 45;
+    const date = dayjs(createScheduleDTO.date).tz('America/Santiago');
+
+    const tutor = await this.tutorsService.getTutorById(
+      createScheduleDTO.tutorId,
+    );
+
+    const student = await this.studentsService.getStudentById(
+      createScheduleDTO.studentId,
+    );
+
+    if (!tutor) {
+      throw new NotFoundException('Tutor not found');
+    }
+
+    if (!student) {
+      throw new NotFoundException('Student not found');
+    }
+
+    if (date.isBefore(dayjs().tz('America/Santiago'))) {
+      throw new BadRequestException('Date must be in the future');
+    }
+
+    const existsSchedule = await this.existsScheduleByTutorAndDate(
+      tutor._id as string,
+      date,
+    );
+
+    if (date.minute() !== 0) {
+      throw new BadRequestException('Date must be at the start of the hour');
+    }
+
+    if (existsSchedule) {
+      throw new BadRequestException(
+        `The tutor with id ${tutor._id as string} already has a schedule at ${date.toISOString()}`,
+      );
+    }
+
+    const newSchedule = new this.scheduleModel({
+      hour: date.hour(),
+      date: date.toDate(),
+      totalPrice: duration * tutor.price_per_hour,
+      duration,
+      tutor: tutor._id,
+      student: student._id,
+    });
+
+    return await newSchedule.save();
   }
 
-  findAll() {
-    return `This action returns all schedules`;
+  public getMySchedules(user: AuthenticatedUser) {
+    if (user.rol === ValidRoles.STUDENT && user.student) {
+      return this.scheduleModel
+        .find({ student: user.student._id })
+        .populate<{ tutor: Tutor }>({
+          path: 'tutor',
+          populate: [
+            {
+              path: 'user',
+              model: User.name,
+            },
+            {
+              path: 'specialties',
+              model: 'Specialty',
+            },
+          ],
+        })
+        .populate<{ student: Student }>({
+          path: 'student',
+          populate: { path: 'user', model: User.name },
+        })
+        .exec();
+    }
+
+    if (user.rol === ValidRoles.TUTOR && user.tutor) {
+      return this.scheduleModel
+        .find({ tutor: user.tutor._id })
+        .populate<{ tutor: Tutor }>({
+          path: 'tutor',
+          populate: [
+            {
+              path: 'user',
+              model: User.name,
+            },
+            {
+              path: 'specialties',
+              model: 'Specialty',
+            },
+          ],
+        })
+        .populate<{ student: Student }>({
+          path: 'student',
+          populate: { path: 'user', model: User.name },
+        })
+        .exec();
+    }
+
+    throw new BadRequestException('Invalid role');
   }
 
-  findOne(id: number) {
-    return `This action returns a #${id} schedule`;
-  }
+  public async existsScheduleByTutorAndDate(tutorId: string, date: Dayjs) {
+    const startOfHour = date.startOf('hour').toDate();
+    const endOfHour = date.endOf('hour').toDate();
 
-  update(id: number, updateScheduleDto: UpdateScheduleDto) {
-    return `This action updates a #${id} schedule`;
-  }
-
-  remove(id: number) {
-    return `This action removes a #${id} schedule`;
+    return this.scheduleModel.exists({
+      tutor: tutorId,
+      date: {
+        $gte: startOfHour,
+        $lt: endOfHour,
+      },
+    });
   }
 }
