@@ -1,5 +1,7 @@
 import {
   BadRequestException,
+  forwardRef,
+  Inject,
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
@@ -19,6 +21,8 @@ import { Tutor } from 'src/tutors/entity/tutor.entity';
 import { Student } from 'src/students/entities/student.entity';
 import { RescheduleDTO } from './dto/reschedule.dto';
 import { ChatsService } from 'src/chats/chats.service';
+import { CallsService } from 'src/calls/calls.service';
+import { Call } from 'src/calls/entities/call.entity';
 
 dayjs.locale('es');
 dayjs.extend(utc);
@@ -32,6 +36,8 @@ export class SchedulesService {
     private readonly tutorsService: TutorsService,
     private readonly studentsService: StudentsService,
     private readonly chatsService: ChatsService,
+    @Inject(forwardRef(() => CallsService))
+    private readonly callsService: CallsService,
   ) {}
 
   // requirements:
@@ -47,7 +53,7 @@ export class SchedulesService {
 
     if (
       user.rol === ValidRoles.STUDENT &&
-      createScheduleDTO.studentId !== user.student?._id
+      createScheduleDTO.studentId !== user.student?._id?.toString()
     ) {
       throw new BadRequestException('Invalid student');
     }
@@ -99,10 +105,22 @@ export class SchedulesService {
 
     const schedule = await newSchedule.save();
 
-    await this.chatsService.createChat([
-      tutor.user._id as Types.ObjectId,
-      student.user._id as Types.ObjectId,
-    ]);
+    const existsChat = await this.chatsService.existsChatBetweenUsers(
+      tutor.user._id as string,
+      student.user._id as string,
+    );
+
+    if (!existsChat) {
+      await this.chatsService.createChat([
+        tutor.user._id as Types.ObjectId,
+        student.user._id as Types.ObjectId,
+      ]);
+    }
+
+    const newCall = await this.callsService.generateLinkForSchedule(schedule);
+
+    schedule.call = newCall._id as Types.ObjectId;
+    await schedule.save();
 
     return schedule;
   }
@@ -222,7 +240,44 @@ export class SchedulesService {
     return await newSchedule.save();
   }
 
-  public async existsScheduleByTutorAndDate(
+  public async getAllNextSchedules() {
+    const now = dayjs();
+    const inFiveMinutes = now.add(5, 'minute');
+
+    return this.scheduleModel
+      .find({
+        date: { $gte: now.toDate(), $lt: inFiveMinutes.toDate() },
+        status: ScheduleStatus.PENDING,
+      })
+      .populate<{ tutor: Tutor }>({
+        path: 'tutor',
+        populate: [
+          {
+            path: 'specialties',
+            model: 'Specialty',
+          },
+        ],
+      })
+      .populate<{ student: Student }>({
+        path: 'student',
+      })
+      .populate<{ call: Call }>({
+        path: 'call',
+      })
+      .exec();
+  }
+
+  public async updateStatus(scheduleId: string, status: ScheduleStatus) {
+    const schedule = await this.scheduleModel.findById(scheduleId);
+    if (!schedule) {
+      throw new NotFoundException('Schedule not found');
+    }
+
+    schedule.status = status;
+    return await schedule.save();
+  }
+
+  private async existsScheduleByTutorAndDate(
     tutorId: string,
     date: Dayjs,
   ): Promise<boolean> {

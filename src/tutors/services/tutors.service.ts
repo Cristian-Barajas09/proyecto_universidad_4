@@ -16,6 +16,7 @@ import { BankType } from 'src/banks/entity/bank-type.entity';
 import { BankAccount } from 'src/banks/entity/bank-accounts.entity';
 import { BankTypeNames } from 'src/banks/interfaces/bank-type.interface';
 import { UpdateTutorDTO } from '../dto/update-tutor.dto';
+import { UsersService } from 'src/users/users.service';
 
 @Injectable()
 export class TutorsService {
@@ -32,6 +33,7 @@ export class TutorsService {
     private readonly bankAccountModel: Model<BankAccount>,
     @Inject(ENCRYPT_ADAPTER_TOKEN)
     private readonly encryptPassword: EncryptPasswordAdapter,
+    private readonly usersService: UsersService,
     private readonly jwtService: JwtService,
   ) {}
 
@@ -131,7 +133,7 @@ export class TutorsService {
           return {
             bankType: bankTypeFound._id,
             email: bankAccount.email,
-            tutor: user._id as Types.ObjectId,
+            user: user._id as Types.ObjectId,
           };
         }
 
@@ -140,12 +142,12 @@ export class TutorsService {
           accountNumber: bankAccount.accountNumber,
           rutTitular: bankAccount.rutTitular,
           bankName: bankAccount.bankName,
-          tutor: user._id as Types.ObjectId,
+          user: user._id as Types.ObjectId,
         };
       },
     );
 
-    await this.bankAccountModel.insertMany(bankAccountsData);
+    const accounts = await this.bankAccountModel.insertMany(bankAccountsData);
     await user.save();
 
     const tutor = await this.tutorModel.create({
@@ -158,8 +160,20 @@ export class TutorsService {
 
     await tutor.save();
 
+    const savedTutor = await this.findByUserId(user._id as string);
+
+    if (!savedTutor) {
+      throw new BadRequestException('Error creating tutor');
+    }
+
+    const savedUser = await this.usersService.findByEmail(user.email, []);
+
+    if (!savedUser) throw new BadRequestException('User not found');
+
     return {
-      ...tutor.toJSON(),
+      ...savedUser.toObject(),
+      tutor: savedTutor.toObject(),
+      bankAccounts: accounts,
       token: this.jwtService.sign({ email: user.email }),
     };
   }

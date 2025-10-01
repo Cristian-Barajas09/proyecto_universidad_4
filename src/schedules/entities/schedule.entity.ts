@@ -30,6 +30,9 @@ export class Schedule extends Document {
 
   @Prop({ type: Types.ObjectId, ref: 'Tutor' })
   public tutor: Types.ObjectId;
+
+  @Prop({ type: Types.ObjectId, ref: 'Call' })
+  public call: Types.ObjectId;
 }
 
 export const ScheduleSchema = SchemaFactory.createForClass(Schedule);

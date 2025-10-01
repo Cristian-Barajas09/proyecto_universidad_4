@@ -153,6 +153,35 @@ export class ChatsService {
       .exec();
   }
 
+  public async getChatById(chatId: string) {
+    return this.chatModel
+      .findById(chatId)
+      .populate('participants', 'fullName email')
+      .populate({
+        path: 'messages',
+        populate: { path: 'sender', select: 'fullName email' },
+      })
+      .exec();
+  }
+
+  public async getChatByBetweenUsers(userId1: string, userId2: string) {
+    return this.chatModel
+      .findOne({
+        participants: { $all: [userId1, userId2] },
+      })
+      .exec();
+  }
+
+  public async existsChatBetweenUsers(userId1: string, userId2: string) {
+    const chat = await this.chatModel
+      .findOne({
+        participants: { $all: [userId1, userId2] },
+      })
+      .exec();
+
+    return !!chat;
+  }
+
   private checkUserConnection(user: User) {
     for (const clientId of Object.keys(this.connectedClients)) {
       const connectedClient = this.connectedClients[clientId];
