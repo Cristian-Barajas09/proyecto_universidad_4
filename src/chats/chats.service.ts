@@ -5,6 +5,7 @@ import { User } from 'src/users/entities/user.entity';
 import { Chat } from './entities/chat.entity';
 import { Model, Types } from 'mongoose';
 import { Message } from './entities/message.entity';
+import { AuthenticatedUser } from 'src/auth/interfaces/authenticated-user.interface';
 
 type ConnectedClients = {
   [id: string]: {
@@ -65,18 +66,14 @@ export class ChatsService {
       .exec();
   }
 
-  public async sendMessage(
-    senderSocketId: string,
-    chatId: string,
-    text: string,
-  ) {
+  public async sendMessage(senderId: string, chatId: string, text: string) {
     const chat = await this.chatModel
       .findById(chatId)
       .populate('participants', 'fullName email')
       .exec();
     if (!chat) throw new Error('Chat not found');
 
-    const { user: sender } = this.getUserBySocketId(senderSocketId);
+    const sender = await this.userModel.findById(senderId).exec();
     if (!sender) throw new Error('Sender not found');
 
     if (
@@ -93,6 +90,10 @@ export class ChatsService {
       sender: sender._id,
       text,
     });
+
+    chat.messages.push(savedMessage._id as Types.ObjectId);
+    await chat.save();
+
     const populatedMessage = await savedMessage.populate<{
       sender: User;
     }>('sender');
@@ -113,6 +114,43 @@ export class ChatsService {
 
   public getUserBySocketId(socketId: string) {
     return this.connectedClients[socketId];
+  }
+
+  public async getMyChats(user: AuthenticatedUser) {
+    const chats = await this.chatModel
+      .find({ participants: user._id })
+      .populate<{
+        participants: User[];
+      }>({ path: 'participants', select: 'fullName email' })
+      .populate<{
+        messages: Message[];
+      }>({
+        path: 'messages',
+        populate: { path: 'sender', select: 'fullName email' },
+      })
+      .exec();
+
+    return chats;
+  }
+
+  public async getMessagesByChatId(chatId: string, user: AuthenticatedUser) {
+    const chat = await this.chatModel
+      .findById(chatId)
+      .populate('participants', 'fullName email')
+      .exec();
+    if (!chat) throw new Error('Chat not found');
+
+    if (
+      !chat.participants.find((p) => p._id.toString() === user._id?.toString())
+    ) {
+      throw new Error('User not in chat');
+    }
+
+    return this.messageModel
+      .find({ chatId })
+      .populate('sender', 'fullName email')
+      .sort({ createdAt: 1 }) // orden cronológico ascendente
+      .exec();
   }
 
   private checkUserConnection(user: User) {

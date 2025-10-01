@@ -1,4 +1,6 @@
 import {
+  ConnectedSocket,
+  MessageBody,
   OnGatewayConnection,
   OnGatewayDisconnect,
   SubscribeMessage,
@@ -42,9 +44,19 @@ export class ChatsGateway implements OnGatewayConnection, OnGatewayDisconnect {
       return;
     }
 
-    const clients = await this.chatsService.getChatsBySocketId(client.id);
+    const chats = await this.chatsService.getChatsBySocketId(client.id);
 
-    this.webSocketServer.emit('connected-clients', clients);
+    for (const chat of chats) {
+      // Usa el ID del chat como nombre de la sala
+      const chatId = chat._id?.toString();
+
+      if (!chatId) continue;
+
+      await client.join(chatId);
+      console.log(`[AUTO-JOIN] Cliente ${client.id} unido a chat: ${chat.id}`);
+    }
+
+    this.webSocketServer.emit('connected-clients', chats);
   }
 
   public handleDisconnect(client: Socket) {
@@ -59,13 +71,27 @@ export class ChatsGateway implements OnGatewayConnection, OnGatewayDisconnect {
   @SubscribeMessage('send-message')
   public async onMessageFromClient(client: Socket, payload: NewMessageDTO) {
     try {
+      const sender = this.chatsService.getUserBySocketId(client.id);
+      const senderId = sender?.user.id as string;
+
+      if (!senderId) throw new Error('Sender not found');
+
       const newMessage = await this.chatsService.sendMessage(
-        client.id,
+        senderId,
         payload.chatId,
         payload.message,
       );
 
-      client.broadcast.emit('message-from-server', newMessage);
+      const confirmedMessage = {
+        ...newMessage,
+        tempId: payload.temporalId, // Asume que payload trae el tempId
+      };
+
+      client.emit('confirmed-message', confirmedMessage);
+
+      client
+        .to(newMessage.chatId.toString())
+        .emit('message-from-server', newMessage);
     } catch (error) {
       if (error instanceof Error) {
         client.emit('error', {
@@ -73,6 +99,18 @@ export class ChatsGateway implements OnGatewayConnection, OnGatewayDisconnect {
           status: HttpStatus.BAD_REQUEST,
         });
       }
+    }
+  }
+
+  @SubscribeMessage('join-chat')
+  public async handleJoinChat(
+    @MessageBody() chatId: string,
+    @ConnectedSocket() client: Socket,
+  ): Promise<void> {
+    if (chatId) {
+      // El nombre de la sala debe ser el ID de la conversación.
+      await client.join(chatId.toString());
+      console.log(`[ROOMS] Cliente ${client.id} unido a sala: ${chatId}`);
     }
   }
 }

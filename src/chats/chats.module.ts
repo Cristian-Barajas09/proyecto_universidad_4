@@ -7,8 +7,10 @@ import { PassportModule } from '@nestjs/passport';
 import { MongooseModule } from '@nestjs/mongoose';
 import { Chat, ChatSchema } from './entities/chat.entity';
 import { Message, MessageSchema } from './entities/message.entity';
+import { ChatsController } from './chats.controller';
 
 @Module({
+  controllers: [ChatsController],
   providers: [ChatsGateway, ChatsService],
   imports: [
     forwardRef(() => UsersModule),
