@@ -7,6 +7,7 @@ import { Schedule, ScheduleSchema } from './entities/schedule.entity';
 import { TutorsModule } from 'src/tutors/tutors.module';
 import { StudentsModule } from 'src/students/students.module';
 import { AuthModule } from 'src/auth/auth.module';
+import { ChatsModule } from 'src/chats/chats.module';
 
 @Module({
   controllers: [SchedulesController],
@@ -19,6 +20,7 @@ import { AuthModule } from 'src/auth/auth.module';
     AuthModule,
     TutorsModule,
     StudentsModule,
+    ChatsModule,
   ],
 })
 export class SchedulesModule {}

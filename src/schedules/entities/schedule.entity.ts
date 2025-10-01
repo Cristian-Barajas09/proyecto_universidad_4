@@ -1,10 +1,11 @@
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
 import { Document, Types } from 'mongoose';
 
-export enum Status {
+export enum ScheduleStatus {
   PENDING = 'pending',
   COMPLETED = 'completed',
   PROGRESS = 'progress',
+  CANCELED = 'canceled',
 }
 
 @Schema()
@@ -19,7 +20,7 @@ export class Schedule extends Document {
   public hour: number;
 
   @Prop()
-  public status: Status;
+  public status: ScheduleStatus;
 
   @Prop({ type: Types.Decimal128 })
   public totalPrice: number;

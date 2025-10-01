@@ -14,6 +14,7 @@ import {
 } from './entity/certifications.entity';
 import { SpecialtiesService } from './services/specialties.service';
 import { PassportModule } from '@nestjs/passport';
+import { BanksModule } from 'src/banks/banks.module';
 
 @Module({
   controllers: [TutorsController, SpecialtiesController],
@@ -28,6 +29,7 @@ import { PassportModule } from '@nestjs/passport';
     CommonModule,
     forwardRef(() => AuthModule),
     UsersModule,
+    BanksModule,
   ],
   exports: [TutorsService, SpecialtiesService, MongooseModule],
 })

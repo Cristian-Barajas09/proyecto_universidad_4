@@ -12,6 +12,10 @@ import {
 } from 'src/common/interfaces/encrypt.interface';
 import { JwtService } from '@nestjs/jwt';
 import { FilterDTO } from '../dto/filters.dto';
+import { BankType } from 'src/banks/entity/bank-type.entity';
+import { BankAccount } from 'src/banks/entity/bank-accounts.entity';
+import { BankTypeNames } from 'src/banks/interfaces/bank-type.interface';
+import { UpdateTutorDTO } from '../dto/update-tutor.dto';
 
 @Injectable()
 export class TutorsService {
@@ -22,6 +26,10 @@ export class TutorsService {
     private readonly specialtyModel: Model<Specialty>,
     @InjectModel(User.name)
     private readonly userModel: Model<User>,
+    @InjectModel(BankType.name)
+    private readonly bankTypeModel: Model<BankType>,
+    @InjectModel(BankAccount.name)
+    private readonly bankAccountModel: Model<BankAccount>,
     @Inject(ENCRYPT_ADAPTER_TOKEN)
     private readonly encryptPassword: EncryptPasswordAdapter,
     private readonly jwtService: JwtService,
@@ -39,6 +47,11 @@ export class TutorsService {
     } = query;
     const filter: Record<string, any> = { verified: true };
     const offset = (page - 1) * limit;
+    const priceMapping = {
+      low: 20,
+      medium: 50,
+      high: 100,
+    };
 
     if (specialties && specialties.length > 0) {
       filter.specialties = { $in: specialties };
@@ -49,7 +62,7 @@ export class TutorsService {
     }
 
     if (price) {
-      filter.price = { $lte: price };
+      filter.price_per_hour = { $lte: priceMapping[price] };
     }
 
     if (recent) {
@@ -68,13 +81,15 @@ export class TutorsService {
       filter.user = { $in: userIds };
     }
 
-    return await this.tutorModel
+    const result = await this.tutorModel
       .find(filter)
       .skip(offset)
       .limit(limit)
       .populate<{ user: User }>('user')
       .populate<{ specialties: Specialty[] }>('specialties')
       .exec();
+
+    return result;
   }
 
   public getTutorById(id: string) {
@@ -101,6 +116,36 @@ export class TutorsService {
       rol: ValidRoles.TUTOR,
     });
 
+    const bankType = await this.bankTypeModel.find({
+      name: { $in: registerTutorDto.bankAccounts.map((b) => b.bankType) },
+    });
+
+    const bankAccountsData = registerTutorDto.bankAccounts.map(
+      (bankAccount) => {
+        const bankTypeFound = bankType.find(
+          (bt) => (bt.name as BankTypeNames) === bankAccount.bankType,
+        );
+        if (!bankTypeFound) throw new BadRequestException('Invalid bank type');
+
+        if ((bankTypeFound.name as BankTypeNames) === BankTypeNames.PAYPAL) {
+          return {
+            bankType: bankTypeFound._id,
+            email: bankAccount.email,
+            tutor: user._id as Types.ObjectId,
+          };
+        }
+
+        return {
+          bankType: bankTypeFound._id,
+          accountNumber: bankAccount.accountNumber,
+          rutTitular: bankAccount.rutTitular,
+          bankName: bankAccount.bankName,
+          tutor: user._id as Types.ObjectId,
+        };
+      },
+    );
+
+    await this.bankAccountModel.insertMany(bankAccountsData);
     await user.save();
 
     const tutor = await this.tutorModel.create({
@@ -125,5 +170,41 @@ export class TutorsService {
       .populate<{ user: User }>('user')
       .populate<{ specialties: Specialty[] }>('specialties')
       .exec();
+  }
+
+  public async updateTutor(tutorId: string, updateData: UpdateTutorDTO) {
+    // Actualiza specialties si es necesario
+    if (updateData.specialties) {
+      const specialties = await this.specialtyModel.find({
+        _id: { $in: updateData.specialties },
+      });
+      updateData.specialties = specialties.map<string>((s) => s.id as string);
+    }
+
+    // Actualiza el tutor
+    const updatedTutor = await this.tutorModel.findByIdAndUpdate(
+      tutorId,
+      updateData,
+      { new: true },
+    );
+
+    if (!updatedTutor) {
+      throw new BadRequestException('Tutor not found');
+    }
+
+    // Si hay datos de usuario para actualizar
+    if (updateData.fullName || updateData.email || updateData.password) {
+      const user = await this.userModel.findById(updatedTutor.user);
+      if (!user) throw new BadRequestException('User not found');
+
+      if (updateData.fullName) user.fullName = updateData.fullName;
+      if (updateData.email) user.email = updateData.email;
+      if (updateData.password) {
+        user.password = await this.encryptPassword.encrypt(updateData.password);
+      }
+      await user.save();
+    }
+
+    return updatedTutor;
   }
 }

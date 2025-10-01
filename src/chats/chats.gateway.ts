@@ -1,38 +1,78 @@
 import {
-  WebSocketGateway,
+  OnGatewayConnection,
+  OnGatewayDisconnect,
   SubscribeMessage,
-  MessageBody,
+  WebSocketGateway,
+  WebSocketServer,
 } from '@nestjs/websockets';
 import { ChatsService } from './chats.service';
-import { CreateChatDto } from './dto/create-chat.dto';
-import { UpdateChatDto } from './dto/update-chat.dto';
+import { Socket, Server } from 'socket.io';
+import { JwtPayload } from 'src/auth/interfaces/jwt-payload.interface';
+import { JwtService } from '@nestjs/jwt';
+import { HttpStatus } from '@nestjs/common';
+import { NewMessageDTO } from './dto/new-message.dto';
 
-@WebSocketGateway()
-export class ChatsGateway {
-  constructor(private readonly chatsService: ChatsService) {}
+@WebSocketGateway({ cors: { origin: '*' }, transports: ['websocket'] })
+export class ChatsGateway implements OnGatewayConnection, OnGatewayDisconnect {
+  public constructor(
+    private readonly chatsService: ChatsService,
+    private readonly jwtService: JwtService,
+  ) {}
 
-  @SubscribeMessage('createChat')
-  create(@MessageBody() createChatDto: CreateChatDto) {
-    return this.chatsService.create(createChatDto);
+  @WebSocketServer()
+  public webSocketServer: Server;
+
+  public async handleConnection(client: Socket, ...args: any[]) {
+    const token = client.handshake.query.token as string;
+
+    let payload: JwtPayload;
+
+    try {
+      payload = await this.jwtService.verify(token ?? '');
+
+      await this.chatsService.registerClient(client, payload.email);
+    } catch (error) {
+      console.error(error);
+      client.emit('error', {
+        message: 'Invalid token',
+        status: HttpStatus.UNAUTHORIZED,
+      });
+
+      client.disconnect();
+      return;
+    }
+
+    const clients = await this.chatsService.getChatsBySocketId(client.id);
+
+    this.webSocketServer.emit('connected-clients', clients);
   }
 
-  @SubscribeMessage('findAllChats')
-  findAll() {
-    return this.chatsService.findAll();
+  public handleDisconnect(client: Socket) {
+    // console.log('Cliente desconectado: ',  client.id)
+    this.chatsService.removeClient(client.id);
+
+    const clients = this.chatsService.getConnectedClients();
+
+    this.webSocketServer.emit('clients-updated', clients);
   }
 
-  @SubscribeMessage('findOneChat')
-  findOne(@MessageBody() id: number) {
-    return this.chatsService.findOne(id);
-  }
+  @SubscribeMessage('send-message')
+  public async onMessageFromClient(client: Socket, payload: NewMessageDTO) {
+    try {
+      const newMessage = await this.chatsService.sendMessage(
+        client.id,
+        payload.chatId,
+        payload.message,
+      );
 
-  @SubscribeMessage('updateChat')
-  update(@MessageBody() updateChatDto: UpdateChatDto) {
-    return this.chatsService.update(updateChatDto.id, updateChatDto);
-  }
-
-  @SubscribeMessage('removeChat')
-  remove(@MessageBody() id: number) {
-    return this.chatsService.remove(id);
+      client.broadcast.emit('message-from-server', newMessage);
+    } catch (error) {
+      if (error instanceof Error) {
+        client.emit('error', {
+          message: error.message,
+          status: HttpStatus.BAD_REQUEST,
+        });
+      }
+    }
   }
 }
