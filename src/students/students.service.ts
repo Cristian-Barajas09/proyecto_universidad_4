@@ -63,7 +63,10 @@ export class StudentsService {
   }
 
   public async getStudentById(id: string) {
-    return this.studentModel.findById(id).populate('user').exec();
+    return this.studentModel
+      .findById(id)
+      .populate<{ user: User }>('user')
+      .exec();
   }
 
   public async findByUserId(userId: string) {

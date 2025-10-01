@@ -23,10 +23,6 @@ export class ChatsGateway implements OnGatewayConnection, OnGatewayDisconnect {
   public webSocketServer: Server;
 
   public async handleConnection(client: Socket, ...args: any[]) {
-    console.log('Cliente conectado: ', client.id);
-    console.log(client.handshake.query);
-    console.log(args);
-
     const token = client.handshake.query.token as string;
 
     let payload: JwtPayload;
@@ -46,9 +42,7 @@ export class ChatsGateway implements OnGatewayConnection, OnGatewayDisconnect {
       return;
     }
 
-    const clients = this.chatsService.getConnectedClients();
-
-    console.log(clients);
+    const clients = await this.chatsService.getChatsBySocketId(client.id);
 
     this.webSocketServer.emit('connected-clients', clients);
   }
@@ -62,13 +56,23 @@ export class ChatsGateway implements OnGatewayConnection, OnGatewayDisconnect {
     this.webSocketServer.emit('clients-updated', clients);
   }
 
-  @SubscribeMessage('message-from-client')
-  public onMessageFromClient(client: Socket, payload: NewMessageDTO) {
-    const thisClient = this.chatsService.getUserBySocketId(client.id);
+  @SubscribeMessage('send-message')
+  public async onMessageFromClient(client: Socket, payload: NewMessageDTO) {
+    try {
+      const newMessage = await this.chatsService.sendMessage(
+        client.id,
+        payload.chatId,
+        payload.message,
+      );
 
-    this.webSocketServer.emit('message-from-server', {
-      fullName: thisClient.user.fullName,
-      message: payload.message,
-    });
+      client.broadcast.emit('message-from-server', newMessage);
+    } catch (error) {
+      if (error instanceof Error) {
+        client.emit('error', {
+          message: error.message,
+          status: HttpStatus.BAD_REQUEST,
+        });
+      }
+    }
   }
 }

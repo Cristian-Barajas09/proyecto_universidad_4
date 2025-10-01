@@ -15,6 +15,7 @@ import { FilterDTO } from '../dto/filters.dto';
 import { BankType } from 'src/banks/entity/bank-type.entity';
 import { BankAccount } from 'src/banks/entity/bank-accounts.entity';
 import { BankTypeNames } from 'src/banks/interfaces/bank-type.interface';
+import { UpdateTutorDTO } from '../dto/update-tutor.dto';
 
 @Injectable()
 export class TutorsService {
@@ -87,7 +88,6 @@ export class TutorsService {
       .populate<{ user: User }>('user')
       .populate<{ specialties: Specialty[] }>('specialties')
       .exec();
-
 
     return result;
   }
@@ -170,5 +170,41 @@ export class TutorsService {
       .populate<{ user: User }>('user')
       .populate<{ specialties: Specialty[] }>('specialties')
       .exec();
+  }
+
+  public async updateTutor(tutorId: string, updateData: UpdateTutorDTO) {
+    // Actualiza specialties si es necesario
+    if (updateData.specialties) {
+      const specialties = await this.specialtyModel.find({
+        _id: { $in: updateData.specialties },
+      });
+      updateData.specialties = specialties.map<string>((s) => s.id as string);
+    }
+
+    // Actualiza el tutor
+    const updatedTutor = await this.tutorModel.findByIdAndUpdate(
+      tutorId,
+      updateData,
+      { new: true },
+    );
+
+    if (!updatedTutor) {
+      throw new BadRequestException('Tutor not found');
+    }
+
+    // Si hay datos de usuario para actualizar
+    if (updateData.fullName || updateData.email || updateData.password) {
+      const user = await this.userModel.findById(updatedTutor.user);
+      if (!user) throw new BadRequestException('User not found');
+
+      if (updateData.fullName) user.fullName = updateData.fullName;
+      if (updateData.email) user.email = updateData.email;
+      if (updateData.password) {
+        user.password = await this.encryptPassword.encrypt(updateData.password);
+      }
+      await user.save();
+    }
+
+    return updatedTutor;
   }
 }

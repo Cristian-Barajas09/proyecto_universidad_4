@@ -17,8 +17,11 @@ export class SchedulesController {
 
   @Post()
   @Auth(ValidRoles.STUDENT)
-  public create(@Body() createScheduleDTO: CreateScheduleDto) {
-    return this.schedulesService.create(createScheduleDTO);
+  public create(
+    @GetUser() user: AuthenticatedUser,
+    @Body() createScheduleDTO: CreateScheduleDto,
+  ) {
+    return this.schedulesService.create(createScheduleDTO, user);
   }
 
   @Get('my-schedules')
@@ -32,7 +35,8 @@ export class SchedulesController {
   public async reschedule(
     @Param('oldScheduleId', ParseMongoIdPipe) oldScheduleId: string,
     @Body() rescheduleDTO: RescheduleDTO,
+    @GetUser() user: AuthenticatedUser,
   ) {
-    return this.schedulesService.reschedule(oldScheduleId, rescheduleDTO);
+    return this.schedulesService.reschedule(oldScheduleId, rescheduleDTO, user);
   }
 }

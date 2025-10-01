@@ -4,7 +4,7 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { CreateScheduleDto } from './dto/create-schedule.dto';
-import { Model } from 'mongoose';
+import { Model, Types } from 'mongoose';
 import { InjectModel } from '@nestjs/mongoose';
 import dayjs, { Dayjs } from 'dayjs';
 import utc from 'dayjs/plugin/utc';
@@ -18,6 +18,7 @@ import { ValidRoles } from 'src/auth/interfaces/valid-roles.interface';
 import { Tutor } from 'src/tutors/entity/tutor.entity';
 import { Student } from 'src/students/entities/student.entity';
 import { RescheduleDTO } from './dto/reschedule.dto';
+import { ChatsService } from 'src/chats/chats.service';
 
 dayjs.locale('es');
 dayjs.extend(utc);
@@ -30,15 +31,26 @@ export class SchedulesService {
     private readonly scheduleModel: Model<Schedule>,
     private readonly tutorsService: TutorsService,
     private readonly studentsService: StudentsService,
+    private readonly chatsService: ChatsService,
   ) {}
 
   // requirements:
   // - The schedule only takes each 15 minutes (0, 15, 30, 45)
   // - The schedule must be in the future
   // - the schedule must be unique for each tutor and date
-  public async create(createScheduleDTO: CreateScheduleDto) {
+  public async create(
+    createScheduleDTO: CreateScheduleDto,
+    user: AuthenticatedUser,
+  ) {
     const duration = 45;
-    const date = dayjs(createScheduleDTO.date).tz('America/Santiago');
+    const date = dayjs(createScheduleDTO.date);
+
+    if (
+      user.rol === ValidRoles.STUDENT &&
+      createScheduleDTO.studentId !== user.student?._id
+    ) {
+      throw new BadRequestException('Invalid student');
+    }
 
     const tutor = await this.tutorsService.getTutorById(
       createScheduleDTO.tutorId,
@@ -56,7 +68,7 @@ export class SchedulesService {
       throw new NotFoundException('Student not found');
     }
 
-    if (date.isBefore(dayjs().tz('America/Santiago'))) {
+    if (date.isBefore(dayjs())) {
       throw new BadRequestException('Date must be in the future');
     }
 
@@ -85,7 +97,14 @@ export class SchedulesService {
       status: ScheduleStatus.PENDING,
     });
 
-    return await newSchedule.save();
+    const schedule = await newSchedule.save();
+
+    await this.chatsService.createChat([
+      tutor.user._id as Types.ObjectId,
+      student.user._id as Types.ObjectId,
+    ]);
+
+    return schedule;
   }
 
   public getMySchedules(user: AuthenticatedUser) {
@@ -138,7 +157,11 @@ export class SchedulesService {
     throw new BadRequestException('Invalid role');
   }
 
-  public async reschedule(oldScheduleId: string, rescheduleDTO: RescheduleDTO) {
+  public async reschedule(
+    oldScheduleId: string,
+    rescheduleDTO: RescheduleDTO,
+    user: AuthenticatedUser,
+  ) {
     const date = dayjs(rescheduleDTO.date).tz('America/Santiago');
 
     const oldSchedule = await this.scheduleModel
@@ -152,6 +175,18 @@ export class SchedulesService {
 
     const tutor = oldSchedule.tutor;
     const student = oldSchedule.student;
+
+    if (user.rol === ValidRoles.STUDENT && user.student) {
+      if (student._id?.toString() !== user.student._id?.toString()) {
+        throw new BadRequestException('Invalid student');
+      }
+    }
+
+    if (user.rol === ValidRoles.TUTOR && user.tutor) {
+      if (tutor._id?.toString() !== user.tutor._id?.toString()) {
+        throw new BadRequestException('Invalid tutor');
+      }
+    }
 
     if (date.isBefore(dayjs().tz('America/Santiago'))) {
       throw new BadRequestException('Date must be in the future');

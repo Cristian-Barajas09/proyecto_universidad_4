@@ -1,7 +1,13 @@
-import { Message } from './message.entity';
+import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
+import { Document, Types } from 'mongoose';
 
-export class Chat {
-  public userOneId: string;
-  public userTwoId: string;
-  public messages: Message[];
+@Schema({ timestamps: true })
+export class Chat extends Document {
+  @Prop({ type: [{ type: Types.ObjectId, ref: 'User' }] })
+  public participants: Types.ObjectId[];
+
+  @Prop({ type: [{ type: Types.ObjectId, ref: 'Message' }] })
+  public messages: Types.ObjectId[];
 }
+
+export const ChatSchema = SchemaFactory.createForClass(Chat);
