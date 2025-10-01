@@ -7,4 +7,7 @@ export class NewMessageDTO {
 
   @IsString()
   public chatId: string;
+
+  @IsString()
+  public temporalId: string;
 }
