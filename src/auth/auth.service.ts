@@ -6,6 +6,11 @@ import {
   ENCRYPT_ADAPTER_TOKEN,
   type EncryptPasswordAdapter,
 } from 'src/common/interfaces/encrypt.interface';
+import { ValidRoles } from './interfaces/valid-roles.interface';
+import { TutorsService } from 'src/tutors/services/tutors.service';
+import { Tutor } from 'src/tutors/entity/tutor.entity';
+import { Student } from 'src/students/entities/student.entity';
+import { StudentsService } from 'src/students/students.service';
 
 @Injectable()
 export class AuthService {
@@ -13,6 +18,8 @@ export class AuthService {
     private readonly usersService: UsersService,
     @Inject(ENCRYPT_ADAPTER_TOKEN)
     private readonly encryptPassword: EncryptPasswordAdapter,
+    private readonly tutorsService: TutorsService,
+    private readonly studentsService: StudentsService,
     private readonly jwtService: JwtService,
   ) {}
 
@@ -21,6 +28,7 @@ export class AuthService {
       '+password',
       '-__v',
     ]);
+
     if (!user) {
       throw new UnauthorizedException();
     }
@@ -31,14 +39,39 @@ export class AuthService {
     );
 
     if (!isPasswordValid) {
-      throw new UnauthorizedException();
+      throw new UnauthorizedException('Correo o contraseña incorrecta');
     }
 
-    const { password, ...userWithoutPassword } = user.toJSON();
+    const token = this.jwtService.sign({ email: user.email });
+    const { password, ...userWithoutPassword } = user.toObject();
 
-    return {
-      ...userWithoutPassword,
-      token: this.jwtService.sign({ email: user.email }),
-    };
+    if (user.rol === ValidRoles.TUTOR) {
+      const tutor = await this.tutorsService.findByUserId(user._id as string);
+      if (!tutor) {
+        throw new UnauthorizedException('Invalid token');
+      }
+
+      return {
+        ...userWithoutPassword,
+        tutor: tutor as unknown as Tutor,
+        token,
+      };
+    }
+
+    if (user.rol === ValidRoles.STUDENT) {
+      const student = await this.studentsService.findByUserId(
+        user._id as string,
+      );
+      if (!student) {
+        throw new UnauthorizedException('Invalid token');
+      }
+      return {
+        ...userWithoutPassword,
+        student: student as unknown as Student,
+        token,
+      };
+    }
+
+    return { ...userWithoutPassword, token };
   }
 }

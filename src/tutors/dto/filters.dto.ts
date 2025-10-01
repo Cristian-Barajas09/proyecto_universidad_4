@@ -7,6 +7,7 @@ import {
   IsOptional,
   IsMongoId,
   IsString,
+  IsIn,
 } from 'class-validator';
 
 export class FilterDTO {
@@ -34,10 +35,10 @@ export class FilterDTO {
   public rating?: number;
 
   @IsOptional()
-  @IsNumber()
-  @IsPositive()
-  @Type(() => Number)
-  public price?: number;
+  @IsString()
+  @IsIn(['low', 'medium', 'high'])
+  @Type(() => String)
+  public price?: 'low' | 'high' | 'medium';
 
   @IsOptional()
   @IsBoolean()

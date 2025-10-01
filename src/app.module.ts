@@ -13,6 +13,7 @@ import { SchedulesModule } from './schedules/schedules.module';
 import { ChatsModule } from './chats/chats.module';
 import { CallsModule } from './calls/calls.module';
 import { ScheduleModule } from '@nestjs/schedule';
+import { BanksModule } from './banks/banks.module';
 
 @Module({
   imports: [
@@ -36,6 +37,7 @@ import { ScheduleModule } from '@nestjs/schedule';
     SchedulesModule,
     ChatsModule,
     CallsModule,
+    BanksModule,
   ],
   controllers: [],
   providers: [],

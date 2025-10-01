@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Body, Query } from '@nestjs/common';
+import { Controller, Get, Post, Body, Query, Param } from '@nestjs/common';
 import { TutorsService } from 'src/tutors/services/tutors.service';
 import { RegisterTutorDto } from 'src/tutors/dto/register-tutor.dto';
 import { Auth } from 'src/auth/decorators/auth.decorator';
@@ -12,8 +12,13 @@ export class TutorsController {
   @Get()
   @Auth(ValidRoles.STUDENT, ValidRoles.ADMIN)
   public getTutors(@Query() query: FilterDTO) {
-
     return this.tutorsService.getTutors(query);
+  }
+
+  @Get(':id')
+  @Auth(ValidRoles.STUDENT, ValidRoles.ADMIN)
+  public getTutorById(@Param('id') id: string) {
+    return this.tutorsService.getTutorById(id);
   }
 
   @Post('register')

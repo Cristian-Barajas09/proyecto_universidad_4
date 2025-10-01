@@ -12,6 +12,9 @@ import {
 } from 'src/common/interfaces/encrypt.interface';
 import { JwtService } from '@nestjs/jwt';
 import { FilterDTO } from '../dto/filters.dto';
+import { BankType } from 'src/banks/entity/bank-type.entity';
+import { BankAccount } from 'src/banks/entity/bank-accounts.entity';
+import { BankTypeNames } from 'src/banks/interfaces/bank-type.interface';
 
 @Injectable()
 export class TutorsService {
@@ -22,6 +25,10 @@ export class TutorsService {
     private readonly specialtyModel: Model<Specialty>,
     @InjectModel(User.name)
     private readonly userModel: Model<User>,
+    @InjectModel(BankType.name)
+    private readonly bankTypeModel: Model<BankType>,
+    @InjectModel(BankAccount.name)
+    private readonly bankAccountModel: Model<BankAccount>,
     @Inject(ENCRYPT_ADAPTER_TOKEN)
     private readonly encryptPassword: EncryptPasswordAdapter,
     private readonly jwtService: JwtService,
@@ -39,6 +46,11 @@ export class TutorsService {
     } = query;
     const filter: Record<string, any> = { verified: true };
     const offset = (page - 1) * limit;
+    const priceMapping = {
+      low: 20,
+      medium: 50,
+      high: 100,
+    };
 
     if (specialties && specialties.length > 0) {
       filter.specialties = { $in: specialties };
@@ -49,7 +61,7 @@ export class TutorsService {
     }
 
     if (price) {
-      filter.price = { $lte: price };
+      filter.price_per_hour = { $lte: priceMapping[price] };
     }
 
     if (recent) {
@@ -68,13 +80,16 @@ export class TutorsService {
       filter.user = { $in: userIds };
     }
 
-    return await this.tutorModel
+    const result = await this.tutorModel
       .find(filter)
       .skip(offset)
       .limit(limit)
       .populate<{ user: User }>('user')
       .populate<{ specialties: Specialty[] }>('specialties')
       .exec();
+
+
+    return result;
   }
 
   public getTutorById(id: string) {
@@ -101,6 +116,36 @@ export class TutorsService {
       rol: ValidRoles.TUTOR,
     });
 
+    const bankType = await this.bankTypeModel.find({
+      name: { $in: registerTutorDto.bankAccounts.map((b) => b.bankType) },
+    });
+
+    const bankAccountsData = registerTutorDto.bankAccounts.map(
+      (bankAccount) => {
+        const bankTypeFound = bankType.find(
+          (bt) => (bt.name as BankTypeNames) === bankAccount.bankType,
+        );
+        if (!bankTypeFound) throw new BadRequestException('Invalid bank type');
+
+        if ((bankTypeFound.name as BankTypeNames) === BankTypeNames.PAYPAL) {
+          return {
+            bankType: bankTypeFound._id,
+            email: bankAccount.email,
+            tutor: user._id as Types.ObjectId,
+          };
+        }
+
+        return {
+          bankType: bankTypeFound._id,
+          accountNumber: bankAccount.accountNumber,
+          rutTitular: bankAccount.rutTitular,
+          bankName: bankAccount.bankName,
+          tutor: user._id as Types.ObjectId,
+        };
+      },
+    );
+
+    await this.bankAccountModel.insertMany(bankAccountsData);
     await user.save();
 
     const tutor = await this.tutorModel.create({

@@ -19,7 +19,7 @@ export class User extends Document {
   @Prop()
   public photo: string;
 
-  @Prop({ type: String, enum: ValidRoles, default: [ValidRoles.STUDENT] })
+  @Prop({ type: String, enum: ValidRoles, default: ValidRoles.STUDENT })
   public rol: ValidRoles;
 }
 
