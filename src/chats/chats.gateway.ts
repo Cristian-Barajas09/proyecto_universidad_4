@@ -33,8 +33,7 @@ export class ChatsGateway implements OnGatewayConnection, OnGatewayDisconnect {
       payload = await this.jwtService.verify(token ?? '');
 
       await this.chatsService.registerClient(client, payload.email);
-    } catch (error) {
-      console.error(error);
+    } catch {
       client.emit('error', {
         message: 'Invalid token',
         status: HttpStatus.UNAUTHORIZED,

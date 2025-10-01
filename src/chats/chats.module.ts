@@ -21,6 +21,6 @@ import { ChatsController } from './chats.controller';
       { name: Message.name, schema: MessageSchema },
     ]),
   ],
-  exports: [ChatsService],
+  exports: [ChatsService, ChatsGateway],
 })
 export class ChatsModule {}
