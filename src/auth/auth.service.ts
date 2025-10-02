@@ -1,4 +1,9 @@
-import { Inject, Injectable, UnauthorizedException } from '@nestjs/common';
+import {
+  Inject,
+  Injectable,
+  NotFoundException,
+  UnauthorizedException,
+} from '@nestjs/common';
 import { LoginDTO } from './dto/login.dto';
 import { UsersService } from 'src/users/users.service';
 import { JwtService } from '@nestjs/jwt';
@@ -73,5 +78,44 @@ export class AuthService {
     }
 
     return { ...userWithoutPassword, token };
+  }
+
+  public async forgetPassword(email: string) {
+    const user = await this.usersService.findByEmail(email, []);
+    if (!user) {
+      throw new NotFoundException('usuario no encontrado');
+    }
+
+    const code = Math.floor(100000 + Math.random() * 900000).toString();
+
+    user.resetCode = code;
+
+    console.log(user.resetCode);
+
+    await user.save();
+
+    // todo: definir el servicio de envio de correos
+
+    return { message: 'Reset code sent to email' };
+  }
+
+  public async resetPassword(email: string, code: string, newPassword: string) {
+    const user = await this.usersService.findByEmail(email, ['+resetCode']);
+    if (!user || user.resetCode !== code) {
+      throw new NotFoundException('Invalid email or code');
+    }
+    user.password = await this.encryptPassword.encrypt(newPassword);
+    user.resetCode = undefined;
+    await user.save();
+    return { message: 'Password reset successful' };
+  }
+
+  public async verifyResetCode(email: string, code: string) {
+    const user = await this.usersService.findByEmail(email, ['+resetCode']);
+    if (!user || user.resetCode !== code) {
+      throw new NotFoundException('Invalid email or code');
+    }
+
+    return { message: 'Code is valid' };
   }
 }

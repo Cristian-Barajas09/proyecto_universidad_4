@@ -67,15 +67,15 @@ export class SchedulesService {
     );
 
     if (!tutor) {
-      throw new NotFoundException('Tutor not found');
+      throw new NotFoundException('tutor no encontrado');
     }
 
     if (!student) {
-      throw new NotFoundException('Student not found');
+      throw new NotFoundException('estudiante no encontrado');
     }
 
     if (date.isBefore(dayjs())) {
-      throw new BadRequestException('Date must be in the future');
+      throw new BadRequestException('La fecha debe estar en el futuro');
     }
 
     const existsSchedule = await this.existsScheduleByTutorAndDate(
@@ -84,7 +84,9 @@ export class SchedulesService {
     );
 
     if (date.minute() % 15 !== 0) {
-      throw new BadRequestException('Date must be at the start of the hour');
+      throw new BadRequestException(
+        'La fecha deberia ser un intervalo de 15 minutos',
+      );
     }
 
     if (existsSchedule) {
@@ -236,6 +238,11 @@ export class SchedulesService {
 
     oldSchedule.status = ScheduleStatus.CANCELED;
     await oldSchedule.save();
+
+    const newCall =
+      await this.callsService.generateLinkForSchedule(newSchedule);
+
+    newSchedule.call = newCall._id as Types.ObjectId;
 
     return await newSchedule.save();
   }

@@ -18,6 +18,7 @@ import { JwtService } from '@nestjs/jwt';
 import { Student } from './entities/student.entity';
 import { UpdateStudentDto } from './dto/update-student.dto';
 import { AuthenticatedUser } from 'src/auth/interfaces/authenticated-user.interface';
+import { UsersService } from 'src/users/users.service';
 
 @Injectable()
 export class StudentsService {
@@ -29,6 +30,7 @@ export class StudentsService {
     @Inject(ENCRYPT_ADAPTER_TOKEN)
     private readonly encryptPassword: EncryptPasswordAdapter,
     private readonly jwtService: JwtService,
+    private readonly usersService: UsersService,
   ) {}
 
   public async register(registerStudentDto: RegisterStudentDto) {
@@ -52,8 +54,18 @@ export class StudentsService {
 
     await student.save();
 
+    const savedStudent = await this.getStudentById(student._id as string);
+    if (!savedStudent) {
+      throw new BadRequestException('Error creating student');
+    }
+
+    const savedUser = await this.usersService.findByEmail(user.email, []);
+
+    if (!savedUser) throw new BadRequestException('User not found');
+
     return {
-      ...student.toJSON(),
+      ...savedUser.toObject(),
+      student: savedStudent.toObject(),
       token: this.jwtService.sign({ email: user.email }),
     };
   }
