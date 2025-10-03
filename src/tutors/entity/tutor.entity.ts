@@ -13,10 +13,10 @@ export class Tutor extends Document implements SoftEntity {
   @Prop()
   public verified: boolean;
 
-  @Prop({ type: mongoose.Schema.Types.ObjectId, ref: 'User' })
+  @Prop({ type: mongoose.Types.ObjectId, ref: 'User' })
   public user: Types.ObjectId;
 
-  @Prop({ type: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Specialty' }] })
+  @Prop({ type: [{ type: mongoose.Types.ObjectId, ref: 'Specialty' }] })
   public specialties: Types.ObjectId[];
 
   @Prop()

@@ -16,6 +16,7 @@ import { TutorsService } from 'src/tutors/services/tutors.service';
 import { Tutor } from 'src/tutors/entity/tutor.entity';
 import { Student } from 'src/students/entities/student.entity';
 import { StudentsService } from 'src/students/students.service';
+import { ApplicationErrors, errorMessages } from 'src/common/constants/errors';
 
 @Injectable()
 export class AuthService {
@@ -117,5 +118,36 @@ export class AuthService {
     }
 
     return { message: 'Code is valid' };
+  }
+
+  public async changePassword(
+    userId: string,
+    oldPassword: string,
+    newPassword: string,
+  ) {
+    const user = await this.usersService.findById(userId, ['+password']);
+    if (!user) {
+      throw new NotFoundException({
+        message: 'usuario no encontrado',
+        error: ApplicationErrors.RESOURCE_NOT_FOUND,
+      });
+    }
+
+    const isOldPasswordValid = await this.encryptPassword.compare(
+      oldPassword,
+      user.password,
+    );
+
+    if (!isOldPasswordValid) {
+      throw new UnauthorizedException({
+        message: errorMessages.OLD_PASSWORD_INCORRECT,
+        error: ApplicationErrors.OLD_PASSWORD_INCORRECT,
+      });
+    }
+
+    user.password = await this.encryptPassword.encrypt(newPassword);
+    await user.save();
+
+    return { message: 'Password changed successfully' };
   }
 }

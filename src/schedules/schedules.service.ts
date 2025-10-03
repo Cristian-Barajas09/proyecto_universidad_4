@@ -34,11 +34,12 @@ export class SchedulesService {
     @InjectModel(Schedule.name)
     private readonly scheduleModel: Model<Schedule>,
     private readonly tutorsService: TutorsService,
+    @Inject(forwardRef(() => StudentsService))
     private readonly studentsService: StudentsService,
     private readonly chatsService: ChatsService,
     @Inject(forwardRef(() => CallsService))
     private readonly callsService: CallsService,
-  ) {}
+  ) { }
 
   // requirements:
   // - The schedule only takes each 15 minutes (0, 15, 30, 45)
@@ -272,6 +273,79 @@ export class SchedulesService {
         path: 'call',
       })
       .exec();
+  }
+
+  public async getMyNextSchedule(user: AuthenticatedUser) {
+    const now = dayjs();
+    console.log({ now });
+
+    if (user.rol === ValidRoles.STUDENT && user.student) {
+      const schedule = await this.scheduleModel
+        .findOne({
+          student: user.student._id,
+          date: { $gte: now.toDate() },
+          status: ScheduleStatus.PENDING,
+        })
+        .sort({ date: 1 }) // <-- Esto es clave
+        .populate<{ tutor: Tutor }>({
+          path: 'tutor',
+          populate: { path: 'user', model: User.name },
+        })
+        .exec();
+
+      if (!schedule) {
+        return null;
+      }
+
+      const chat = await this.chatsService.getChatByBetweenUsers(
+        user?._id as string,
+        (schedule?.tutor?.user as unknown as User)?._id as string,
+      );
+
+      const { messages, ...chatWithOutMessages } = chat?.toObject() || {
+        messages: [],
+      };
+
+      return {
+        ...schedule.toObject(),
+        chat: chatWithOutMessages,
+      };
+    }
+
+    if (user.rol === ValidRoles.TUTOR && user.tutor) {
+      const schedule = await this.scheduleModel
+        .findOne({
+          tutor: user?.tutor._id,
+          date: { $gte: now.toDate() },
+          status: ScheduleStatus.PENDING,
+        })
+        .sort({ date: 1 }) // <-- Esto es clave
+        .populate<{ student: Student }>({
+          path: 'student',
+          populate: { path: 'user', model: User.name },
+        })
+        .exec();
+
+      if (!schedule) {
+        return null;
+      }
+
+      const chat = await this.chatsService.getChatByBetweenUsers(
+        user?._id as string,
+        (schedule?.student?.user as unknown as User)?._id as string,
+      );
+
+      const { messages, ...chatWithOutMessages } = chat?.toObject() || {
+        messages: [],
+      };
+
+      return {
+        ...schedule.toObject(),
+        chat: chatWithOutMessages,
+      };
+    }
+
+    return null;
   }
 
   public async updateStatus(scheduleId: string, status: ScheduleStatus) {

@@ -19,11 +19,11 @@ import { CallsModule } from 'src/calls/calls.module';
       { name: Schedule.name, schema: ScheduleSchema },
     ]),
     PassportModule.register({ defaultStrategy: 'jwt' }),
-    AuthModule,
-    TutorsModule,
-    StudentsModule,
+    forwardRef(() => AuthModule),
+    forwardRef(() => TutorsModule),
+    forwardRef(() => StudentsModule),
     ChatsModule,
   ],
-  exports: [SchedulesService],
+  exports: [SchedulesService, MongooseModule],
 })
 export class SchedulesModule {}

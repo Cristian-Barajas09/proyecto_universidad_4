@@ -1,4 +1,9 @@
-import { BadRequestException, Inject, Injectable } from '@nestjs/common';
+import {
+  BadRequestException,
+  Inject,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Tutor } from 'src/tutors/entity/tutor.entity';
 import { Model, Types } from 'mongoose';
@@ -17,6 +22,8 @@ import { BankAccount } from 'src/banks/entity/bank-accounts.entity';
 import { BankTypeNames } from 'src/banks/interfaces/bank-type.interface';
 import { UpdateTutorDTO } from '../dto/update-tutor.dto';
 import { UsersService } from 'src/users/users.service';
+import { Schedule } from 'src/schedules/entities/schedule.entity';
+import { Student } from 'src/students/entities/student.entity';
 
 @Injectable()
 export class TutorsService {
@@ -35,6 +42,8 @@ export class TutorsService {
     private readonly encryptPassword: EncryptPasswordAdapter,
     private readonly usersService: UsersService,
     private readonly jwtService: JwtService,
+    @InjectModel(Schedule.name)
+    private readonly scheduleModel: Model<Schedule>,
   ) {}
 
   public async getTutors(query: FilterDTO) {
@@ -216,9 +225,45 @@ export class TutorsService {
       if (updateData.password) {
         user.password = await this.encryptPassword.encrypt(updateData.password);
       }
+      if (updateData.photo) {
+        user.photo = updateData.photo;
+      }
+
       await user.save();
     }
 
     return updatedTutor;
+  }
+
+  public async getMyStudents(tutorId: string) {
+    const tutor = await this.getTutorById(tutorId);
+
+    if (!tutor) {
+      throw new NotFoundException('Student not found');
+    }
+
+    const schedules = await this.scheduleModel
+      .find({ tutor: tutor._id })
+      .sort({ date: -1 })
+      .populate<{
+        student: Student;
+      }>({
+        path: 'student',
+        populate: [{ path: 'user', model: 'User' }],
+      })
+      .exec();
+
+    const uniqueStudents: Student[] = [];
+    const studentIds = new Set();
+
+    for (const schedule of schedules) {
+      const student = schedule.student;
+      if (student && !studentIds.has(student._id?.toString())) {
+        uniqueStudents.push(student);
+        studentIds.add(student._id?.toString());
+      }
+    }
+
+    return uniqueStudents;
   }
 }

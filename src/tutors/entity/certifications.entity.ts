@@ -9,7 +9,7 @@ export class Certification extends Document {
   @Prop()
   public fileUrl: string;
 
-  @Prop({ type: mongoose.Schema.Types.ObjectId, ref: 'Tutor' })
+  @Prop({ type: mongoose.Types.ObjectId, ref: 'Tutor' })
   public tutor: Types.ObjectId;
 }
 

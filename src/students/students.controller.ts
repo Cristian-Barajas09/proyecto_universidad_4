@@ -38,4 +38,12 @@ export class StudentsController {
   ) {
     return this.studentsService.updateStudent(id, updateStudentDto, user);
   }
+
+  @Get('me/last-tutors')
+  @Auth(ValidRoles.STUDENT)
+  public async getMyLastTutors(@GetUser() user: AuthenticatedUser) {
+    return this.studentsService.getLastTutorsByStudentId(
+      user?.student?._id?.toString() ?? '',
+    );
+  }
 }

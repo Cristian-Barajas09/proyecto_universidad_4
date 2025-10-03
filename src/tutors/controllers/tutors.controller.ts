@@ -13,6 +13,8 @@ import { Auth } from 'src/auth/decorators/auth.decorator';
 import { ValidRoles } from 'src/auth/interfaces/valid-roles.interface';
 import { FilterDTO } from '../dto/filters.dto';
 import { UpdateTutorDTO } from '../dto/update-tutor.dto';
+import type { AuthenticatedUser } from 'src/auth/interfaces/authenticated-user.interface';
+import { GetUser } from 'src/auth/decorators/get-user.decorator';
 
 @Controller('tutors')
 export class TutorsController {
@@ -43,4 +45,11 @@ export class TutorsController {
   ) {
     return this.tutorsService.updateTutor(id, updateTutorDto);
   }
+
+  @Get('me/students')
+  @Auth(ValidRoles.TUTOR)
+  public getMyStudents(@GetUser() user: AuthenticatedUser) {
+    return this.tutorsService.getMyStudents(user.tutor!._id as string);
+  }
+
 }
