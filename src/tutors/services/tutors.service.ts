@@ -24,6 +24,8 @@ import { UpdateTutorDTO } from '../dto/update-tutor.dto';
 import { UsersService } from 'src/users/users.service';
 import { Schedule } from 'src/schedules/entities/schedule.entity';
 import { Student } from 'src/students/entities/student.entity';
+import { Certification } from '../entity/certifications.entity';
+import dayjs from 'dayjs';
 
 @Injectable()
 export class TutorsService {
@@ -44,6 +46,8 @@ export class TutorsService {
     private readonly jwtService: JwtService,
     @InjectModel(Schedule.name)
     private readonly scheduleModel: Model<Schedule>,
+    @InjectModel(Certification.name)
+    private readonly certificationModel: Model<Certification>,
   ) {}
 
   public async getTutors(query: FilterDTO) {
@@ -116,6 +120,14 @@ export class TutorsService {
       throw new BadRequestException('Email already in use');
     }
 
+    if (
+      await this.userModel.exists({
+        identityDocument: registerTutorDto.identityDocument,
+      })
+    ) {
+      throw new BadRequestException('Identity Document already in use');
+    }
+
     const specialties = await this.specialtyModel.find({
       _id: { $in: registerTutorDto.specialties },
     });
@@ -125,6 +137,8 @@ export class TutorsService {
       email: registerTutorDto.email,
       password: await this.encryptPassword.encrypt(registerTutorDto.password),
       rol: ValidRoles.TUTOR,
+      identityDocument: registerTutorDto.identityDocument,
+      phoneNumber: registerTutorDto.phoneNumber,
     });
 
     const bankType = await this.bankTypeModel.find({
@@ -167,7 +181,19 @@ export class TutorsService {
       verified: false,
     });
 
-    await tutor.save();
+    const certifications = await this.certificationModel.insertMany(
+      registerTutorDto.certifications.map((cert) => ({
+        ...cert,
+        date: dayjs(cert.date).toDate(),
+        tutor: tutor._id as Types.ObjectId,
+      })),
+    );
+
+    await this.tutorModel.findByIdAndUpdate(
+      tutor._id,
+      { $set: { certifications: certifications.map((c) => c._id) } },
+      { new: true },
+    );
 
     const savedTutor = await this.findByUserId(user._id as string);
 
@@ -192,6 +218,7 @@ export class TutorsService {
       .findOne({ user: userId })
       .populate<{ user: User }>('user')
       .populate<{ specialties: Specialty[] }>('specialties')
+      .populate<{ certifications: Certification[] }>('certifications')
       .exec();
   }
 

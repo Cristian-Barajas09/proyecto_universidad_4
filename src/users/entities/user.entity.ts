@@ -17,6 +17,9 @@ export class User extends Document {
   public identityDocument: string;
 
   @Prop()
+  public phoneNumber: string;
+
+  @Prop()
   public resetCode?: string;
 
   @Prop()
