@@ -121,7 +121,7 @@ export class ChatsService {
       .find({ participants: user._id })
       .populate<{
         participants: User[];
-      }>({ path: 'participants', select: 'fullName email' })
+      }>({ path: 'participants', select: 'fullName email photo' })
       .populate<{
         messages: Message[];
       }>({
@@ -136,7 +136,7 @@ export class ChatsService {
   public async getMessagesByChatId(chatId: string, user: AuthenticatedUser) {
     const chat = await this.chatModel
       .findById(chatId)
-      .populate('participants', 'fullName email')
+      .populate('participants', 'fullName email photo')
       .exec();
     if (!chat) throw new Error('Chat not found');
 
@@ -148,7 +148,7 @@ export class ChatsService {
 
     return this.messageModel
       .find({ chatId })
-      .populate('sender', 'fullName email')
+      .populate('sender', 'fullName email photo')
       .sort({ createdAt: 1 }) // orden cronológico ascendente
       .exec();
   }
@@ -156,7 +156,7 @@ export class ChatsService {
   public async getChatById(chatId: string) {
     return this.chatModel
       .findById(chatId)
-      .populate('participants', 'fullName email')
+      .populate('participants', 'fullName email photo')
       .populate({
         path: 'messages',
         populate: { path: 'sender', select: 'fullName email' },

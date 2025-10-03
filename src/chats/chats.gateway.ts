@@ -70,6 +70,8 @@ export class ChatsGateway implements OnGatewayConnection, OnGatewayDisconnect {
   @SubscribeMessage('send-message')
   public async onMessageFromClient(client: Socket, payload: NewMessageDTO) {
     try {
+      console.log('Mensaje recibido del cliente', client.id, payload);
+
       const sender = this.chatsService.getUserBySocketId(client.id);
       const senderId = sender?.user.id as string;
 

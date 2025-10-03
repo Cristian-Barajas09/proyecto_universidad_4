@@ -16,7 +16,12 @@ async function bootstrap() {
   );
 
   app.setGlobalPrefix('api');
-  app.enableCors();
+
+  // Configuración dinámica de CORS
+  const corsOrigin = process.env.CORS_ORIGIN || '*';
+  app.enableCors({
+    origin: corsOrigin === '*' ? true : corsOrigin.split(','),
+  });
 
   const port = process.env.PORT ?? 3000;
 

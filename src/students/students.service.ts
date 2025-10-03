@@ -18,6 +18,9 @@ import { JwtService } from '@nestjs/jwt';
 import { Student } from './entities/student.entity';
 import { UpdateStudentDto } from './dto/update-student.dto';
 import { AuthenticatedUser } from 'src/auth/interfaces/authenticated-user.interface';
+import { UsersService } from 'src/users/users.service';
+import { Schedule } from 'src/schedules/entities/schedule.entity';
+import { Tutor } from 'src/tutors/entity/tutor.entity';
 
 @Injectable()
 export class StudentsService {
@@ -29,6 +32,9 @@ export class StudentsService {
     @Inject(ENCRYPT_ADAPTER_TOKEN)
     private readonly encryptPassword: EncryptPasswordAdapter,
     private readonly jwtService: JwtService,
+    private readonly usersService: UsersService,
+    @InjectModel(Schedule.name)
+    private readonly scheduleModel: Model<Schedule>,
   ) {}
 
   public async register(registerStudentDto: RegisterStudentDto) {
@@ -52,8 +58,18 @@ export class StudentsService {
 
     await student.save();
 
+    const savedStudent = await this.getStudentById(student._id as string);
+    if (!savedStudent) {
+      throw new BadRequestException('Error creating student');
+    }
+
+    const savedUser = await this.usersService.findByEmail(user.email, []);
+
+    if (!savedUser) throw new BadRequestException('User not found');
+
     return {
-      ...student.toJSON(),
+      ...savedUser.toObject(),
+      student: savedStudent.toObject(),
       token: this.jwtService.sign({ email: user.email }),
     };
   }
@@ -63,10 +79,16 @@ export class StudentsService {
   }
 
   public async getStudentById(id: string) {
-    return this.studentModel
+    const student = await this.studentModel
       .findById(id)
       .populate<{ user: User }>('user')
       .exec();
+
+    if (!student) {
+      throw new NotFoundException('Usuario no encontrado');
+    }
+
+    return student;
   }
 
   public async findByUserId(userId: string) {
@@ -78,8 +100,6 @@ export class StudentsService {
     updateStudentDto: UpdateStudentDto,
     user: AuthenticatedUser,
   ) {
-    console.log({ user });
-
     if (
       user.rol !== ValidRoles.ADMIN &&
       user?.student?._id?.toString() !== id
@@ -89,6 +109,8 @@ export class StudentsService {
       );
     }
 
+    console.log('Updating student with ID:', id);
+    console.log('Update data:', updateStudentDto);
     const student = await this.getStudentById(id);
 
     if (!student) {
@@ -98,7 +120,8 @@ export class StudentsService {
     if (
       updateStudentDto.fullName ||
       updateStudentDto.email ||
-      updateStudentDto.password
+      updateStudentDto.password ||
+      updateStudentDto.photo
     ) {
       const user = await this.userModel.findById(student.user);
 
@@ -128,6 +151,12 @@ export class StudentsService {
         );
       }
 
+      if (updateStudentDto.photo) {
+        console.log('Updating photo');
+        console.log(updateStudentDto.photo);
+        user.photo = updateStudentDto.photo;
+      }
+
       await user.save();
     }
 
@@ -137,6 +166,69 @@ export class StudentsService {
 
     await student.save();
 
-    return this.getStudentById(id);
+    const savedStudent = await this.getStudentById(student._id as string);
+
+    return savedStudent;
+  }
+
+  public async getLastTutorsByStudentId(studentId: string, limit = 5) {
+    const student = await this.getStudentById(studentId);
+
+    if (!student) {
+      throw new NotFoundException('Student not found');
+    }
+
+    const schedules = await this.scheduleModel
+      .find({ student: student._id, status: { $ne: 'canceled' } })
+      .sort({ date: -1 })
+      .populate<{
+        tutor: Tutor;
+      }>({
+        path: 'tutor',
+        populate: [
+          { path: 'user', model: 'User' },
+          { path: 'specialties', model: 'Specialty' },
+        ],
+      })
+      .exec();
+
+    const uniqueTutors: Tutor[] = [];
+    const tutorIds = new Set();
+
+    for (const schedule of schedules) {
+      const tutor = schedule.tutor;
+      if (tutor && !tutorIds.has(tutor._id?.toString())) {
+        uniqueTutors.push(tutor);
+        tutorIds.add(tutor._id?.toString());
+        if (uniqueTutors.length >= limit) break;
+      }
+    }
+
+    return uniqueTutors;
+  }
+
+  public async getLastSchedulesByStudentIdAndTutorId(
+    studentId: string,
+    tutorId: string,
+    limit = 5,
+  ) {
+    const student = await this.getStudentById(studentId);
+    if (!student) {
+      throw new NotFoundException('Student not found');
+    }
+
+    const schedules = await this.scheduleModel
+      .find({ student: student._id, tutor: tutorId })
+      .sort({ date: -1 })
+      .limit(limit)
+      .populate<{
+        student: Student;
+      }>({
+        path: 'student',
+        model: 'Student',
+      })
+      .exec();
+
+    return schedules;
   }
 }

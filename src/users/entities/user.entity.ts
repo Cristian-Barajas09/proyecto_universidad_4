@@ -17,6 +17,9 @@ export class User extends Document {
   public identityDocument: string;
 
   @Prop()
+  public resetCode?: string;
+
+  @Prop()
   public photo: string;
 
   @Prop({ type: String, enum: ValidRoles, default: ValidRoles.STUDENT })

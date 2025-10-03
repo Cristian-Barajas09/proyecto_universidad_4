@@ -34,11 +34,12 @@ export class SchedulesService {
     @InjectModel(Schedule.name)
     private readonly scheduleModel: Model<Schedule>,
     private readonly tutorsService: TutorsService,
+    @Inject(forwardRef(() => StudentsService))
     private readonly studentsService: StudentsService,
     private readonly chatsService: ChatsService,
     @Inject(forwardRef(() => CallsService))
     private readonly callsService: CallsService,
-  ) {}
+  ) { }
 
   // requirements:
   // - The schedule only takes each 15 minutes (0, 15, 30, 45)
@@ -67,15 +68,15 @@ export class SchedulesService {
     );
 
     if (!tutor) {
-      throw new NotFoundException('Tutor not found');
+      throw new NotFoundException('tutor no encontrado');
     }
 
     if (!student) {
-      throw new NotFoundException('Student not found');
+      throw new NotFoundException('estudiante no encontrado');
     }
 
     if (date.isBefore(dayjs())) {
-      throw new BadRequestException('Date must be in the future');
+      throw new BadRequestException('La fecha debe estar en el futuro');
     }
 
     const existsSchedule = await this.existsScheduleByTutorAndDate(
@@ -84,7 +85,9 @@ export class SchedulesService {
     );
 
     if (date.minute() % 15 !== 0) {
-      throw new BadRequestException('Date must be at the start of the hour');
+      throw new BadRequestException(
+        'La fecha deberia ser un intervalo de 15 minutos',
+      );
     }
 
     if (existsSchedule) {
@@ -237,6 +240,11 @@ export class SchedulesService {
     oldSchedule.status = ScheduleStatus.CANCELED;
     await oldSchedule.save();
 
+    const newCall =
+      await this.callsService.generateLinkForSchedule(newSchedule);
+
+    newSchedule.call = newCall._id as Types.ObjectId;
+
     return await newSchedule.save();
   }
 
@@ -265,6 +273,79 @@ export class SchedulesService {
         path: 'call',
       })
       .exec();
+  }
+
+  public async getMyNextSchedule(user: AuthenticatedUser) {
+    const now = dayjs();
+    console.log({ now });
+
+    if (user.rol === ValidRoles.STUDENT && user.student) {
+      const schedule = await this.scheduleModel
+        .findOne({
+          student: user.student._id,
+          date: { $gte: now.toDate() },
+          status: ScheduleStatus.PENDING,
+        })
+        .sort({ date: 1 }) // <-- Esto es clave
+        .populate<{ tutor: Tutor }>({
+          path: 'tutor',
+          populate: { path: 'user', model: User.name },
+        })
+        .exec();
+
+      if (!schedule) {
+        return null;
+      }
+
+      const chat = await this.chatsService.getChatByBetweenUsers(
+        user?._id as string,
+        (schedule?.tutor?.user as unknown as User)?._id as string,
+      );
+
+      const { messages, ...chatWithOutMessages } = chat?.toObject() || {
+        messages: [],
+      };
+
+      return {
+        ...schedule.toObject(),
+        chat: chatWithOutMessages,
+      };
+    }
+
+    if (user.rol === ValidRoles.TUTOR && user.tutor) {
+      const schedule = await this.scheduleModel
+        .findOne({
+          tutor: user?.tutor._id,
+          date: { $gte: now.toDate() },
+          status: ScheduleStatus.PENDING,
+        })
+        .sort({ date: 1 }) // <-- Esto es clave
+        .populate<{ student: Student }>({
+          path: 'student',
+          populate: { path: 'user', model: User.name },
+        })
+        .exec();
+
+      if (!schedule) {
+        return null;
+      }
+
+      const chat = await this.chatsService.getChatByBetweenUsers(
+        user?._id as string,
+        (schedule?.student?.user as unknown as User)?._id as string,
+      );
+
+      const { messages, ...chatWithOutMessages } = chat?.toObject() || {
+        messages: [],
+      };
+
+      return {
+        ...schedule.toObject(),
+        chat: chatWithOutMessages,
+      };
+    }
+
+    return null;
   }
 
   public async updateStatus(scheduleId: string, status: ScheduleStatus) {

@@ -15,6 +15,7 @@ import {
 import { SpecialtiesService } from './services/specialties.service';
 import { PassportModule } from '@nestjs/passport';
 import { BanksModule } from 'src/banks/banks.module';
+import { SchedulesModule } from 'src/schedules/schedules.module';
 
 @Module({
   controllers: [TutorsController, SpecialtiesController],
@@ -28,8 +29,9 @@ import { BanksModule } from 'src/banks/banks.module';
     PassportModule.register({ defaultStrategy: 'jwt' }),
     CommonModule,
     forwardRef(() => AuthModule),
-    UsersModule,
+    forwardRef(() => UsersModule),
     BanksModule,
+    forwardRef(() => SchedulesModule),
   ],
   exports: [TutorsService, SpecialtiesService, MongooseModule],
 })

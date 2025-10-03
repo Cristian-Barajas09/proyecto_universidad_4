@@ -20,15 +20,15 @@ export class UsersService {
       .exec();
   }
 
-  public async findById(id: string) {
-    return this.userModel.findById(id).populate('student').exec();
+  public async findById(id: string, fields: string[] = []) {
+    return this.userModel.findById(id).select(fields).exec();
   }
 
   public async deleteById(id: string) {
     const user = await this.userModel.findById(id);
 
     if (!user) {
-      throw new NotFoundException('User not found');
+      throw new NotFoundException('Usuario no encontrado');
     }
 
     return this.userModel.findByIdAndDelete(id).exec();

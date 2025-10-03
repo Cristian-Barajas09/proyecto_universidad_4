@@ -39,4 +39,10 @@ export class SchedulesController {
   ) {
     return this.schedulesService.reschedule(oldScheduleId, rescheduleDTO, user);
   }
+
+  @Get('me/next-schedule')
+  @Auth(ValidRoles.STUDENT, ValidRoles.TUTOR)
+  public getMyNextSchedule(@GetUser() user: AuthenticatedUser) {
+    return this.schedulesService.getMyNextSchedule(user);
+  }
 }
