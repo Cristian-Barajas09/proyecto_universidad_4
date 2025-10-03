@@ -51,5 +51,4 @@ export class TutorsController {
   public getMyStudents(@GetUser() user: AuthenticatedUser) {
     return this.tutorsService.getMyStudents(user.tutor!._id as string);
   }
-
 }

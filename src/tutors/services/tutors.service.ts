@@ -112,6 +112,7 @@ export class TutorsService {
       .findById(id)
       .populate<{ user: User }>('user')
       .populate<{ specialties: Specialty[] }>('specialties')
+      .populate<{ certifications: Certification[] }>('certifications')
       .exec();
   }
 
