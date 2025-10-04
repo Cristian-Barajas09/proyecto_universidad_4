@@ -182,10 +182,12 @@ export class TutorsService {
       verified: false,
     });
 
+    // date: DD/MM/YYYY
+
     const certifications = await this.certificationModel.insertMany(
       registerTutorDto.certifications.map((cert) => ({
         ...cert,
-        date: dayjs(cert.date).toDate(),
+        date: dayjs(cert.date, 'DD/MM/YYYY').toDate(),
         tutor: tutor._id as Types.ObjectId,
       })),
     );
