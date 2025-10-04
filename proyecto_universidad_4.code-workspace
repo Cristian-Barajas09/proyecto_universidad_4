@@ -5,6 +5,9 @@
 		},
 		{
 			"path": "../../react/tutor-virtual-app-movil"
+		},
+		{
+			"path": "../../svelte/tutor-virtual-centro-medico-ser"
 		}
 	],
 	"settings": {
