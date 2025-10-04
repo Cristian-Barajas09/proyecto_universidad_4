@@ -1,4 +1,8 @@
-import { Injectable } from '@nestjs/common';
+import {
+  ForbiddenException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Socket } from 'socket.io';
 import { User } from 'src/users/entities/user.entity';
@@ -137,20 +141,21 @@ export class ChatsService {
     const chat = await this.chatModel
       .findById(chatId)
       .populate('participants', 'fullName email photo')
+      .populate({
+        path: 'messages',
+        populate: { path: 'sender', select: 'fullName email' },
+      })
+      .sort({ 'messages.createdAt': 1 })
       .exec();
-    if (!chat) throw new Error('Chat not found');
+    if (!chat) throw new NotFoundException('El chat no existe');
 
     if (
       !chat.participants.find((p) => p._id.toString() === user._id?.toString())
     ) {
-      throw new Error('User not in chat');
+      throw new ForbiddenException('El usuario no pertenece al chat');
     }
 
-    return this.messageModel
-      .find({ chatId })
-      .populate('sender', 'fullName email photo')
-      .sort({ createdAt: 1 }) // orden cronológico ascendente
-      .exec();
+    return chat;
   }
 
   public async getChatById(chatId: string) {
