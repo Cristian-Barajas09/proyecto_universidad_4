@@ -29,6 +29,7 @@ import dayjs from 'dayjs';
 
 // 🔑 Importar el plugin que permite definir formatos personalizados
 import customParseFormat from 'dayjs/plugin/customParseFormat';
+import { Temary } from '../entity/temary.entity';
 
 dayjs.extend(customParseFormat); // 🔑 Usar el plugin
 @Injectable()
@@ -52,6 +53,8 @@ export class TutorsService {
     private readonly scheduleModel: Model<Schedule>,
     @InjectModel(Certification.name)
     private readonly certificationModel: Model<Certification>,
+    @InjectModel(Temary.name)
+    private readonly temaryModel: Model<Temary>,
   ) {}
 
   public async getTutors(query: FilterDTO) {
@@ -117,6 +120,7 @@ export class TutorsService {
       .populate<{ user: User }>('user')
       .populate<{ specialties: Specialty[] }>('specialties')
       .populate<{ certifications: Certification[] }>('certifications')
+      .populate<{ temary: Temary[] }>('temary')
       .exec();
   }
 
@@ -226,6 +230,7 @@ export class TutorsService {
       .populate<{ user: User }>('user')
       .populate<{ specialties: Specialty[] }>('specialties')
       .populate<{ certifications: Certification[] }>('certifications')
+      .populate<{ temary: Temary[] }>('temary')
       .exec();
   }
 
@@ -294,6 +299,22 @@ export class TutorsService {
 
         await updatedTutor.save();
       }
+    }
+
+    if (updateData.temary) {
+      // Eliminar los temarios existentes del tutor
+      await this.temaryModel.deleteMany({ tutor: updatedTutor._id });
+
+      // Insertar los nuevos temarios
+      const temariosData = updateData.temary.map((temario) => ({
+        title: temario.title,
+        description: temario.description,
+        tutor: updatedTutor._id as Types.ObjectId,
+      }));
+
+      const temarios = await this.temaryModel.insertMany(temariosData);
+      updatedTutor.temary = temarios.map((t) => t._id);
+      await updatedTutor.save();
     }
 
     // Si hay datos de usuario para actualizar
