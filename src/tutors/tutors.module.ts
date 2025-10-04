@@ -16,6 +16,7 @@ import { SpecialtiesService } from './services/specialties.service';
 import { PassportModule } from '@nestjs/passport';
 import { BanksModule } from 'src/banks/banks.module';
 import { SchedulesModule } from 'src/schedules/schedules.module';
+import { Temary, TemarySchema } from './entity/temary.entity';
 
 @Module({
   controllers: [TutorsController, SpecialtiesController],
@@ -25,6 +26,7 @@ import { SchedulesModule } from 'src/schedules/schedules.module';
       { name: Tutor.name, schema: TutorSchema },
       { name: Specialty.name, schema: SpecialtySchema },
       { name: Certification.name, schema: CertificationSchema },
+      { name: Temary.name, schema: TemarySchema },
     ]),
     PassportModule.register({ defaultStrategy: 'jwt' }),
     CommonModule,

@@ -22,6 +22,9 @@ export class Tutor extends Document implements SoftEntity {
   @Prop({ type: [{ type: mongoose.Types.ObjectId, ref: 'Certification' }] })
   public certifications: Types.ObjectId[];
 
+  @Prop({ type: [{ type: mongoose.Types.ObjectId, ref: 'Temary' }] })
+  public temary: Types.ObjectId[];
+
   @Prop()
   public deletedAt?: Date;
 

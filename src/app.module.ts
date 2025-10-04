@@ -15,7 +15,6 @@ import { CallsModule } from './calls/calls.module';
 import { ScheduleModule } from '@nestjs/schedule';
 import { BanksModule } from './banks/banks.module';
 import { FilesModule } from './files/files.module';
-import { SeedModule } from './seed/seed.module';
 
 @Module({
   imports: [
@@ -41,7 +40,6 @@ import { SeedModule } from './seed/seed.module';
     CallsModule,
     BanksModule,
     FilesModule,
-    SeedModule,
   ],
   controllers: [],
   providers: [],
