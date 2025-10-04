@@ -26,7 +26,6 @@ export class CallsService {
 
   @Cron('*/5 * * * *')
   public async handleCron() {
-    console.log('called every 20 seconds');
     const schedules = await this.schedulesService.getAllNextSchedules();
 
     console.log(JSON.stringify(schedules, null, 2));
@@ -54,11 +53,11 @@ export class CallsService {
       const message = await this.chatsService.sendMessage(
         chat.participants[0]._id?.toString() || '',
         chat._id?.toString() || '',
-        `
-        Link de la clase para el estudiante: ${call.studentLink}
-        Link de la clase para el tutor: ${call.tutorLink}
-        Duración: ${schedule.duration} minutos
-        `,
+        JSON.stringify({
+          tutorLink: call.tutorLink,
+          studentLink: call.studentLink,
+          scheduleId: schedule._id?.toString() || '',
+        }),
       );
 
       this.chatsGateway.webSocketServer

@@ -1,4 +1,4 @@
-import { IsDateString, IsString } from 'class-validator';
+import { IsString } from 'class-validator';
 
 export class CertificationDto {
   @IsString()
@@ -10,6 +10,5 @@ export class CertificationDto {
   public institute: string;
 
   @IsString()
-  @IsDateString()
-  public date: Date;
+  public date: string;
 }
