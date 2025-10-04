@@ -22,6 +22,9 @@ export class Schedule extends Document {
   @Prop()
   public status: ScheduleStatus;
 
+  @Prop()
+  public topic: string;
+
   @Prop({ type: Types.Decimal128 })
   public totalPrice: number;
 
@@ -30,7 +33,6 @@ export class Schedule extends Document {
 
   @Prop({ type: Types.ObjectId, ref: 'Tutor' })
   public tutor: Types.ObjectId;
-
   @Prop({ type: Types.ObjectId, ref: 'Call' })
   public call: Types.ObjectId;
 }

@@ -104,6 +104,7 @@ export class SchedulesService {
       tutor: tutor._id,
       student: student._id,
       status: ScheduleStatus.PENDING,
+      topic: createScheduleDTO.topic,
     });
 
     const schedule = await newSchedule.save();

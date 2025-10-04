@@ -1,4 +1,4 @@
-import { IsISO8601, IsMongoId } from 'class-validator';
+import { IsISO8601, IsMongoId, IsString } from 'class-validator';
 
 export class CreateScheduleDto {
   @IsMongoId()
@@ -9,4 +9,7 @@ export class CreateScheduleDto {
 
   @IsISO8601()
   public date: string;
+
+  @IsString()
+  public topic: string;
 }
