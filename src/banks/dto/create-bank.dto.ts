@@ -1,4 +1,10 @@
-import { IsEmail, IsIn, IsString, ValidateIf } from 'class-validator';
+import {
+  IsEmail,
+  IsIn,
+  IsOptional,
+  IsString,
+  ValidateIf,
+} from 'class-validator';
 import { BankTypeNames } from '../interfaces/bank-type.interface';
 
 export class CreateBankDto {
@@ -14,9 +20,9 @@ export class CreateBankDto {
   @IsString()
   public bankName: string;
 
-  @ValidateIf((o: CreateBankDto) => o.bankType === BankTypeNames.BANK)
+  @IsOptional()
   @IsString()
-  public rutTitular: string;
+  public rutTitular?: string;
 
   @IsString()
   @IsIn([BankTypeNames.BANK, BankTypeNames.PAYPAL])

@@ -164,7 +164,7 @@ export class TutorsService {
         return {
           bankType: bankTypeFound._id,
           accountNumber: bankAccount.accountNumber,
-          rutTitular: bankAccount.rutTitular,
+          // rutTitular: bankAccount.rutTitular,
           bankName: bankAccount.bankName,
           user: user._id as Types.ObjectId,
         };
