@@ -12,4 +12,5 @@ export const appConfig = () => ({
   cloudinaryKey: process.env.CLOUDINARY_KEY || 'default_cloudinary_key',
   cloudinaryCloudName:
     process.env.CLOUDINARY_CLOUD_NAME || 'default_cloudinary_cloud_name',
+  isSeedExecuted: process.env.IS_SEED_EXECUTED || false,
 });

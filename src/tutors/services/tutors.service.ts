@@ -27,6 +27,10 @@ import { Student } from 'src/students/entities/student.entity';
 import { Certification } from '../entity/certifications.entity';
 import dayjs from 'dayjs';
 
+// 🔑 Importar el plugin que permite definir formatos personalizados
+import customParseFormat from 'dayjs/plugin/customParseFormat';
+
+dayjs.extend(customParseFormat); // 🔑 Usar el plugin
 @Injectable()
 export class TutorsService {
   public constructor(
@@ -237,24 +241,73 @@ export class TutorsService {
     // Actualiza el tutor
     const updatedTutor = await this.tutorModel.findByIdAndUpdate(
       tutorId,
-      updateData,
+      {
+        price_per_hour: updateData.pricePerHour,
+        biografy: updateData.biografy,
+        specialties: updateData.specialties,
+      },
       { new: true },
     );
 
     if (!updatedTutor) {
-      throw new BadRequestException('Tutor not found');
+      throw new BadRequestException('Tutor no encontrado');
+    }
+
+    if (updateData.certifications) {
+      if (updateData.certifications) {
+        const validCertifications = updateData.certifications.map((cert) => {
+          // 1. Verificar si la fecha existe
+          if (!cert.date) {
+            throw new BadRequestException(
+              'El campo "date" es obligatorio para todas las certificaciones.',
+            );
+          }
+
+          console.log(cert.date);
+
+          // 2. Parsear en modo estricto
+          // 🔑 Usar `true` como tercer argumento para el modo estricto de Day.js
+          const parsedDate = dayjs(cert.date, 'DD/MM/YYYY', true);
+
+          // 3. Validar si el parseo fue exitoso
+          if (!parsedDate.isValid()) {
+            throw new BadRequestException(
+              `Fecha de certificación inválida: "${cert.date}". El formato esperado es DD/MM/YYYY.`,
+            );
+          }
+
+          // 4. Retornar el objeto con la fecha como objeto Date
+          return {
+            ...cert,
+            date: parsedDate.toDate(),
+            tutor: updatedTutor._id as Types.ObjectId,
+          };
+        });
+
+        // Inserta las certificaciones válidas (si el map no lanzó excepciones)
+        const certifications =
+          await this.certificationModel.insertMany(validCertifications);
+
+        updatedTutor.certifications = certifications.map(
+          (c) => c._id as Types.ObjectId,
+        );
+
+        await updatedTutor.save();
+      }
     }
 
     // Si hay datos de usuario para actualizar
-    if (updateData.fullName || updateData.email || updateData.password) {
+    if (updateData.email || updateData.password) {
       const user = await this.userModel.findById(updatedTutor.user);
-      if (!user) throw new BadRequestException('User not found');
-
-      if (updateData.fullName) user.fullName = updateData.fullName;
+      if (!user)
+        throw new BadRequestException('El usuario no ha sido encontrado');
       if (updateData.email) user.email = updateData.email;
       if (updateData.password) {
         user.password = await this.encryptPassword.encrypt(updateData.password);
       }
+      if (updateData.identityDocument)
+        user.identityDocument = updateData.identityDocument;
+      if (updateData.phoneNumber) user.phoneNumber = updateData.phoneNumber;
       if (updateData.photo) {
         user.photo = updateData.photo;
       }

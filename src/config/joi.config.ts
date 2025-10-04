@@ -11,4 +11,5 @@ export const validationSchema = Joi.object({
   CLOUDINARY_SECRET: Joi.string().required(),
   CLOUDINARY_KEY: Joi.string().required(),
   CLOUDINARY_CLOUD_NAME: Joi.string().required(),
+  IS_SEED_EXECUTED: Joi.boolean().default(false),
 });
