@@ -23,6 +23,7 @@ import { RescheduleDTO } from './dto/reschedule.dto';
 import { ChatsService } from 'src/chats/chats.service';
 import { CallsService } from 'src/calls/calls.service';
 import { Call } from 'src/calls/entities/call.entity';
+import { Chat } from 'src/chats/entities/chat.entity';
 
 dayjs.locale('es');
 dayjs.extend(utc);
@@ -39,7 +40,7 @@ export class SchedulesService {
     private readonly chatsService: ChatsService,
     @Inject(forwardRef(() => CallsService))
     private readonly callsService: CallsService,
-  ) { }
+  ) {}
 
   // requirements:
   // - The schedule only takes each 15 minutes (0, 15, 30, 45)
@@ -114,11 +115,18 @@ export class SchedulesService {
       student.user._id as string,
     );
 
+    let chat: Chat | null = null;
+
     if (!existsChat) {
-      await this.chatsService.createChat([
+      chat = await this.chatsService.createChat([
         tutor.user._id as Types.ObjectId,
         student.user._id as Types.ObjectId,
       ]);
+    } else {
+      chat = await this.chatsService.getChatByBetweenUsers(
+        tutor.user._id as string,
+        student.user._id as string,
+      );
     }
 
     const newCall = await this.callsService.generateLinkForSchedule(schedule);
@@ -126,7 +134,7 @@ export class SchedulesService {
     schedule.call = newCall._id as Types.ObjectId;
     await schedule.save();
 
-    return schedule;
+    return { ...schedule.toObject(), chat };
   }
 
   public getMySchedules(user: AuthenticatedUser) {

@@ -28,8 +28,6 @@ export class CallsService {
   public async handleCron() {
     const schedules = await this.schedulesService.getAllNextSchedules();
 
-    console.log(JSON.stringify(schedules, null, 2));
-
     for (const schedule of schedules) {
       const chat = await this.chatsService.getChatByBetweenUsers(
         schedule.tutor.user._id.toString(),
